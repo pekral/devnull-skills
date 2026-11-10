@@ -5,6 +5,7 @@ declare(strict_types=1);
 const FETCH_SCRIPT = __DIR__.'/../plugins/devnull-insights/skills/devnull-insights/scripts/fetch.php';
 const PROFILES_SCRIPT = __DIR__.'/../plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php';
 const STATE_SCRIPT = __DIR__.'/../plugins/devnull-insights/skills/devnull-insights/scripts/state.php';
+const ARCHIVE_SCRIPT = __DIR__.'/../plugins/devnull-insights/skills/devnull-insights/scripts/archive.php';
 
 /** A fresh, empty profile directory for one test. */
 function profileHome(): string

@@ -24,7 +24,7 @@ final readonly class Selection
 
     /**
      * @param  array<string, array<string, mixed>>  $posts  the fetched window
-     * @return array{matched: list<array<string, mixed>>, filtered: array{total: int, already_seen: int, weak_only: int, below_min_score: int, excluded: int, series_merged: int}}
+     * @return array{matched: list<array<string, mixed>>, filtered: array{total: int, already_seen: int, weak_only: int, below_min_score: int, excluded: int, series_merged: int}, topic_counts: array<string, int>}
      */
     public function select(array $posts, string $baseUrl): array
     {
@@ -58,7 +58,16 @@ final readonly class Selection
 
         ['entries' => $matched, 'merged' => $filtered['series_merged']] = Series::collapse(Posts::byEngagement($candidates));
 
-        return ['matched' => $matched, 'filtered' => ['total' => array_sum($filtered)] + $filtered];
+        // How many reported posts touch each topic: the numbers a weekly report compares with the previous week.
+        $topicCounts = [];
+        foreach ($matched as $entry) {
+            foreach (array_keys($entry['topics']) as $topic) {
+                $topicCounts[$topic] = ($topicCounts[$topic] ?? 0) + 1;
+            }
+        }
+        arsort($topicCounts);
+
+        return ['matched' => $matched, 'filtered' => ['total' => array_sum($filtered)] + $filtered, 'topic_counts' => $topicCounts];
     }
 
     /** @param array<string, mixed> $commit */
