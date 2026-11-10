@@ -46,6 +46,7 @@ test('invalid profiles are rejected with a clear message', function (array $prof
 })->with([
     [['name' => 'Bad Name', 'repository' => 'x', 'keywords' => 'a'], 'Invalid profile name'],
     [['name' => 'all', 'repository' => 'x', 'keywords' => 'a'], '"all" is reserved'],
+    [['name' => 'api-2', 'repository' => 'x', 'keywords' => 'a'], 'must not end with -weekly or -<number>'],
     [['name' => 'ok', 'repository' => ' ', 'keywords' => 'a'], 'needs a repository'],
     [['name' => 'ok', 'repository' => 'x', 'keywords' => ' , '], 'needs at least one strong keyword'],
     [['name' => 'ok', 'repository' => 'x', 'keywords' => 'a', 'hours' => '0'], 'hours must be a positive number'],

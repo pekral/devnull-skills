@@ -105,6 +105,9 @@ final readonly class ProfileStore
         if ($name === 'all') {
             throw new DevnullException('"all" is reserved: fetch.php --profile=all selects every profile');
         }
+        if (preg_match('/-(weekly|\d+)$/', $name) === 1) {
+            throw new DevnullException("Invalid profile name \"{$name}\": it must not end with -weekly or -<number>, which archived report names use");
+        }
 
         return $name;
     }
