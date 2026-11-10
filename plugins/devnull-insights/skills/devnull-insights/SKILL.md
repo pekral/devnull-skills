@@ -89,6 +89,18 @@ Only when the user asks for specific proposals ("založ issues pro P1 a P3", "cr
 6. **Link back** — with a profile, store the issue on the proposal: `php <skill-dir>/scripts/state.php proposal-set --profile=<name> --id=<id> --status=accepted --issue=<issue-url>`.
 7. **Report** — list the created issues with their links, the skipped duplicates with theirs, and anything that failed with the `gh` error.
 
+### 8. Unattended, weekly and archived runs
+Scheduled runs put these words in the request (see `docs/scheduling.md` of the repository):
+
+- **`unattended`** — nobody reads the conversation:
+  - Ask nothing and take every default. Anything that would need a decision (a repository without a profile, an unclear request) is skipped and listed under *Method and limits*.
+  - Use saved profiles only, with `--since-last-run`.
+  - Do not create issues, save or change profiles, or change proposal statuses. Publish nothing, except through `notify=` below.
+  - Registering new proposals, recording the run, and archiving the report still happen: they are local memory, not publishing.
+- **`weekly`** — a summary of the last 7 days: fetch with `--hours=168 --include-seen` instead of `--since-last-run`, so the posts reported on single days count again. Compare the topics with the previous weekly report: `php <skill-dir>/scripts/archive.php latest --name=<name> --kind=weekly --before=<today YYYY-MM-DD>` gives its `data` file; read its `topic_counts` (per project in `projects[]`) and render the *Week over week* table of the template. Without a previous weekly report, say so in one line.
+- **Archive** — always in unattended runs, otherwise when the user asks to save or archive the report. Write the finished report to `<scratch-dir>/report.md`, then `php <skill-dir>/scripts/archive.php save --name=<profile name, or all-projects, or digest> --report=<scratch-dir>/report.md --data=<scratch-dir>/devnull.json [--kind=weekly]`. The archive never overwrites a report; give the user the returned path.
+- **`notify=<owner/repo>#<issue>`** — the only publishing an unattended run may do: after archiving, add one comment to that issue with the TL;DR bullets of section 0 (with their source links) and the archived report path: `gh issue comment <issue> -R <owner/repo> --body-file <scratch-dir>/notify.md`. Without `notify=`, nothing is posted anywhere.
+
 ## Source links
 - Format each link as `[@author](url)` so the reader sees who said it and can open it in one click; add a short label when one item cites several posts, e.g. `[@Seldaek — agent PR flood](url)`.
 - Take `url` verbatim from the `url` field of the fetched JSON (`https://dev-null.sh/@<handle>/commits/<id>`). Never build, shorten or guess a URL, and never link the author's profile or the `link` field (an external page the post shares) in its place — the external link may follow the post link as extra context.
@@ -109,4 +121,5 @@ Render the answer with `templates/report.md` (in this skill's directory) — alw
 - The reply follows `templates/report.md` for the chosen mode, with no empty sections.
 - Every theme, proposal, quick win and engagement opportunity links at least one dev-null post in the `[@author](url)` format, and every proposal names a concrete change in the repository.
 - In profile modes: new proposals were registered before the report, reinforced ones got their new sources, and the run was recorded after the report.
+- Unattended runs asked nothing, archived the report, and published only to a `notify=` issue named in the request.
 - Nothing was posted to dev-null.sh, and the repository was not modified except for issues the user confirmed in step 7.
