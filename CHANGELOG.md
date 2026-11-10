@@ -3,9 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- Tests and CI: Pest suite with a `php -S` fixture server standing in for dev-null.sh, a portability scan of the plugin scripts, a CI matrix on Ubuntu, macOS and Windows × PHP 8.3–8.5 with manifest validation, and a daily contract smoke test against the live site that opens an issue on failure (#6).
 - `templates/report.md`: one Markdown report layout for every request (repository, digest and question modes) — header table, TL;DR, theme and proposal tables with stable IDs, quick-win checklist, engagement table, method and limits.
 
 ### Changed
+- `fetch.php` is split into small classes under `scripts/src` with its own autoloader (no Composer at runtime). Every dev-null.sh response is checked against the expected shape: a changed shape, an unreachable site or an invalid option ends the run with exit code 1 and an `error:` line, never with an empty result. A version change during the run is followed, and a failed replies request is reported as `replies_error` on the post (#6).
 - Every output item (themes, proposals, quick wins, engagement opportunities, quotes) must link its source dev-null post as `[@author](url)`, with the URL taken verbatim from the fetched JSON; items without a source post are dropped.
 - `fetch.php` runs unchanged on Windows, macOS and Linux: HTTPS through PHP streams instead of ext-curl, case-insensitive regex instead of ext-mbstring, new `--output` option instead of shell redirection (Windows PowerShell 5.1 writes UTF-16).
 - The skill reads the target README via `gh api … -H "Accept: application/vnd.github.raw"` instead of the Unix-only `base64 -d`.
