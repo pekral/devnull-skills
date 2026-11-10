@@ -58,7 +58,8 @@ test('invalid input fails loudly', function (array $call, string $message): void
     expect(fn () => $this->archive->save(...$arguments))->toThrow(DevnullException::class, $message);
 })->with([
     [[0 => '../x'], 'Invalid report name'],
-    [[0 => 'demo-weekly'], 'Invalid report name'],
+    [[0 => 'demo-weekly'], 'must not end with -weekly or -<number>'],
+    [[0 => 'api-2'], 'must not end with -weekly or -<number>'],
     [[1 => 'monthly'], 'Unknown kind "monthly"'],
     [[4 => '10.11.2026'], 'Invalid date'],
     [[2 => '/nonexistent/report.md'], 'Cannot read the report'],
