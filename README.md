@@ -84,6 +84,8 @@ php plugins/devnull-insights/skills/devnull-insights/scripts/archive.php list
 
 ## Install
 
+While the repository is private, both tools clone it with your own Git credentials (`gh auth login`, or an SSH key on GitHub).
+
 ### Claude Code
 
 ```text
@@ -91,13 +93,18 @@ php plugins/devnull-insights/skills/devnull-insights/scripts/archive.php list
 /plugin install devnull-insights@devnull-skills
 ```
 
+The same works from a terminal: `claude plugin marketplace add pekral/devnull-skills` and `claude plugin install devnull-insights@devnull-skills`. Update with `claude plugin marketplace update devnull-skills`.
+
 ### Codex
 
 ```bash
 codex plugin marketplace add git@github.com:pekral/devnull-skills.git
+codex plugin add devnull-insights@devnull-skills
 ```
 
-Then install `devnull-insights` from the Plugins directory (`.agents/plugins/marketplace.json`).
+Codex reads `.agents/plugins/marketplace.json`. Update with `codex plugin marketplace upgrade devnull-skills`.
+
+Both tools install a plugin into a cache keyed by its version (`…/devnull-insights/<version>/`), so users get a change only after the version goes up — see [Releasing](#releasing).
 
 ## Local development
 
@@ -125,7 +132,17 @@ Composer and Pest are development tools of this repository only; the plugins run
 
 ## Releasing
 
-Bump `version` in both `plugins/<name>/.claude-plugin/plugin.json`, `plugins/<name>/.codex-plugin/plugin.json` and `.claude-plugin/marketplace.json`, add a `CHANGELOG.md` entry, tag `v<version>`.
+1. Set the new `version` in `.claude-plugin/marketplace.json`, `plugins/<name>/.claude-plugin/plugin.json` and `plugins/<name>/.codex-plugin/plugin.json`. `ManifestsTest` fails while they differ.
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [<version>] - <YYYY-MM-DD>` and open a new empty `## [Unreleased]` above it. `ManifestsTest` fails when the version has no section.
+3. Run `vendor/bin/pest`, then commit and merge to `main`.
+4. Tag the release and publish it with the changelog section as notes:
+
+```bash
+git tag v<version> && git push origin v<version>
+php bin/release-notes.php <version> | gh release create v<version> --title "v<version>" --notes-file -
+```
+
+Before the repository goes public, work through [`docs/publishing-checklist.md`](docs/publishing-checklist.md).
 
 ## License
 
