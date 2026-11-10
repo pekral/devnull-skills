@@ -110,6 +110,9 @@ final readonly class ProfileStore
         if (preg_match('/^[a-z0-9][a-z0-9._-]*$/', $name) !== 1) {
             throw new DevnullException("Invalid profile name \"{$name}\": use lower-case letters, digits, '.', '_' and '-'");
         }
+        if ($name === 'all') {
+            throw new DevnullException('"all" is reserved: fetch.php --profile=all selects every profile');
+        }
 
         $repository = trim((string) ($profile['repository'] ?? ''));
         if ($repository === '') {
