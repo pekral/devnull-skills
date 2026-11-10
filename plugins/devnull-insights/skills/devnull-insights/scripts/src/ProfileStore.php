@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace DevnullInsights;
 
-use JsonException;
-
 /**
  * Saved project profiles in `projects.json`, outside the plugin so an update never overwrites them.
  *
@@ -41,6 +39,11 @@ final readonly class ProfileStore
         return new self($directory);
     }
 
+    public function directory(): string
+    {
+        return $this->directory;
+    }
+
     public function path(): string
     {
         return $this->directory.DIRECTORY_SEPARATOR.self::File;
@@ -49,15 +52,7 @@ final readonly class ProfileStore
     /** @return array<string, Profile> by name */
     public function all(): array
     {
-        if (! is_file($this->path())) {
-            return [];
-        }
-
-        try {
-            $data = json_decode((string) file_get_contents($this->path()), true, flags: JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new DevnullException("{$this->path()} is not valid JSON: {$exception->getMessage()}", previous: $exception);
-        }
+        $data = JsonFile::read($this->path()) ?? [];
 
         $profiles = [];
         foreach ((array) ($data['projects'] ?? []) as $profile) {
@@ -148,19 +143,7 @@ final readonly class ProfileStore
     /** @param array<string, Profile> $profiles */
     private function write(array $profiles): void
     {
-        if (! is_dir($this->directory) && ! @mkdir($this->directory, 0o777, true) && ! is_dir($this->directory)) {
-            throw new DevnullException("Cannot create {$this->directory}");
-        }
-
         ksort($profiles);
-        $json = json_encode(['projects' => array_values($profiles)], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).PHP_EOL;
-
-        // Write a sibling file and rename it over the old one, so a crash never leaves half a file.
-        $temporary = $this->path().'.'.getmypid().'.tmp';
-        if (@file_put_contents($temporary, $json) === false || ! @rename($temporary, $this->path())) {
-            @unlink($temporary);
-
-            throw new DevnullException("Cannot write {$this->path()}");
-        }
+        JsonFile::write($this->path(), ['projects' => array_values($profiles)]);
     }
 }
