@@ -40,10 +40,16 @@ final readonly class StateStore
     public function load(string $profile): array
     {
         $data = JsonFile::read($this->path($profile)) ?? [];
+        $lastRun = $data['last_run_at'] ?? null;
+
+        // The file is edited by hand, so a broken time is reported here rather than deep inside a fetch.
+        if ($lastRun !== null && (! is_string($lastRun) || strtotime($lastRun) === false)) {
+            throw new DevnullException("{$this->path($profile)}: last_run_at must be an ISO 8601 time or null");
+        }
 
         return [
             'profile' => $profile,
-            'last_run_at' => is_string($data['last_run_at'] ?? null) ? $data['last_run_at'] : null,
+            'last_run_at' => $lastRun,
             'seen' => array_map('strval', array_filter((array) ($data['seen'] ?? []), 'is_scalar')),
             'proposals' => array_values(array_map(self::proposal(...), array_filter((array) ($data['proposals'] ?? []), 'is_array'))),
         ];

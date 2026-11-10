@@ -41,6 +41,14 @@ test('proposals get stable ids and keep their history of decisions', function ()
         ->and(array_column($this->states->load('demo')['proposals'], 'id'))->toBe(['P1', 'P2']);
 });
 
+test('a hand-edited state with a broken last run time fails with the file name', function (): void {
+    $path = $this->states->path('demo');
+    mkdir(dirname($path), 0o777, true);
+    file_put_contents($path, json_encode(['last_run_at' => 'yesterday-ish']));
+
+    expect(fn () => $this->states->load('demo'))->toThrow(DevnullException::class, 'last_run_at must be an ISO 8601 time or null');
+});
+
 test('invalid proposal changes fail loudly', function (callable $change, string $message): void {
     $this->states->addProposal('demo', 'Existing', ['https://dev-null.sh/@a/commits/1']);
 
