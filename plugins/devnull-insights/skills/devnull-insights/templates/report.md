@@ -7,6 +7,10 @@ Report template for devnull-insights. Rules:
     repository  — the user names a repository/project       → 0, 1, 2, 3, 4, 5, (6), 7
     digest      — no repository, "what is happening"         → 0, 1, 2, 5, 6, 7
     question    — a specific question ("what do people…")    → 0, ❓ Answer, 2, 5, (6), 7
+    projects    — several profiles (--profile=a,b or all)     → 0, 2, then per project 1, 3, 4, then 5, (6), 7
+- Projects mode: sections 0, 2, 5, 6 and 7 cover all projects once. Sections 1, 3 and 4 repeat per project under one
+  heading `## 🎯 {project name}` with `### 1. Repository snapshot`, `### 3. Proposals`, `### 4. Quick wins` inside it;
+  proposal IDs carry the project prefix (`ai-olympus-P1`). The header table lists every project in **Query**.
 - Every row with a post carries its source link `[@author](url)` (see Source links in SKILL.md).
 - Table cells stay short (≤ 12 words); detail goes under the table, never inside it.
 - Strength: ●●● = 3+ independent authors or strong engagement, ●●○ = 2 authors or one well-discussed post, ●○○ = one post.
