@@ -45,12 +45,12 @@ In saved-profile and all-projects modes still read each repository as below, bec
 
 ### 2. Fetch posts
 ```bash
-php <skill-dir>/scripts/fetch.php --profile=<name>|<name1,name2>|all --output=<scratch-dir>/devnull.json
+php <skill-dir>/scripts/fetch.php --profile=<name>|<name1,name2>|all --since-last-run --output=<scratch-dir>/devnull.json
 php <skill-dir>/scripts/fetch.php --hours=24 --keywords="strong1,strong2" --weak-keywords="weak1,weak2" --output=<scratch-dir>/devnull.json
 ```
 - Cross-platform: the same command works in bash, zsh, cmd and PowerShell on Windows, macOS and Linux. Needs PHP 8.3+ with ext-openssl only. Always use `--output`, never `>`: Windows PowerShell 5.1 re-encodes redirected output to UTF-16. Use the OS path style for `<scratch-dir>` and quote paths containing spaces. Do not pipe the output through Unix-only tools (`jq`, `grep`, `base64`); read the JSON file directly or process it with `php -r`.
-- Options: `--output=file.json`, `--profile=…` (each profile uses its own keywords, topics, exclusions and hours; `--hours` overrides the hours of all of them; cannot be combined with `--keywords`), `--hours=N`, `--topics=path.json`, `--keywords=a,b` and `--weak-keywords=c,d` (the strong and weak keywords of topic `repository`), `--min-score=N` (default 2 = one strong keyword; raise it when the result is still noisy), `--max-pages=N` (20 posts per page, default 100), `--trending=N`, `--no-replies`.
-- Output JSON: `scanned_posts`, `complete_window` (false = page limit hit, raise `--max-pages`), `matched[]` sorted by engagement (stars + 2×replies) with `id`, `url`, `author`, `body`, `link`, `topics` (topic → matched keywords), `score` (2 per strong keyword the author wrote, 1 per weak keyword or keyword found only in a link preview or quoted post), `series_count` (when several near-identical posts of one author were merged into this one), `replies[]`; `filtered_out` (`total`, `weak_only`, `below_min_score`, `excluded`, `series_merged`); and `trending_overall[]` regardless of topic. With `--profile`, `topics`, `min_score`, `matched_count`, `filtered_out` and `matched` sit inside `projects[]`, one entry per profile with its `name`, `repository` and `hours`.
+- Options: `--output=file.json`, `--profile=…` (each profile uses its own keywords, topics, exclusions and hours; `--hours` overrides the hours of all of them; cannot be combined with `--keywords`), `--since-last-run` (with a profile: read from the last recorded run instead of the profile's hours, at most 7 days; use it for routine runs unless the user names a window), `--include-seen` (with a profile: keep posts reported in an earlier run; use it only when the user asks to repeat a report), `--hours=N`, `--topics=path.json`, `--keywords=a,b` and `--weak-keywords=c,d` (the strong and weak keywords of topic `repository`), `--min-score=N` (default 2 = one strong keyword; raise it when the result is still noisy), `--max-pages=N` (20 posts per page, default 100), `--trending=N`, `--no-replies`.
+- Output JSON: `scanned_posts`, `complete_window` (false = page limit hit, raise `--max-pages`), `matched[]` sorted by engagement (stars + 2×replies) with `id`, `url`, `author`, `body`, `link`, `topics` (topic → matched keywords), `score` (2 per strong keyword the author wrote, 1 per weak keyword or keyword found only in a link preview or quoted post), `series_count` (when several near-identical posts of one author were merged into this one), `replies[]`; `filtered_out` (`total`, `weak_only`, `below_min_score`, `excluded`, `series_merged`); and `trending_overall[]` regardless of topic. With `--profile`, `topics`, `min_score`, `matched_count`, `filtered_out` and `matched` sit inside `projects[]`, one entry per profile with its `name`, `repository`, `hours`, `last_run_at` and `proposals`. Posts reported in an earlier run are left out and counted as `filtered_out.already_seen`.
 - Write the output to the session scratchpad, not the repository. Runtime is ~30–60 s per 24 h.
 - On any failure the script exits with code 1 and prints one `error:` line on stderr; it never returns an empty result instead. `error: dev-null.sh changed: …` means the site no longer answers in the expected shape: report it to the user, do not scrape HTML as a workaround. A `warning: replies of …` line and a `replies_error` field mark a post whose replies could not be loaded; the run itself is still valid.
 
@@ -67,6 +67,17 @@ Evaluate also discoverability/adoption levers backed by the signals: README firs
 
 ### 5. Rank and propose
 Score each proposal by impact on adoption, evidence strength (number of independent authors, engagement), effort and risk. Keep 3–7 proposals.
+
+**With a profile, the project has a memory** — `projects[].proposals` lists every earlier proposal with its `id`, `status` and `sources`. Before writing proposals:
+- A theme that supports an earlier proposal with status `new` or `accepted` is **not a new proposal**. Show it under *Reinforced earlier proposals* with its existing `id` and the new source links, and add the sources: `php <skill-dir>/scripts/state.php proposal-set --profile=<name> --id=<id> --sources=<url1,url2>`.
+- A `rejected` proposal does not come back, unless the new signal is clearly stronger than its `sources` (more independent authors or a direct request). Then show it under *Reinforced earlier proposals* with "previously rejected: <note>".
+- A `done` proposal does not come back.
+- Register each genuinely new proposal **before** writing the report, and use the returned id (`P7`) in the report: `php <skill-dir>/scripts/state.php proposal-add --profile=<name> --title="<title>" --sources=<url1,url2>`.
+
+### 6. Remember the run (profile modes only)
+After the report is written, record it for each project, so the next run reports only new posts: `php <skill-dir>/scripts/state.php record --profile=<name> --input=<scratch-dir>/devnull.json`. Skip it when the run failed or the report was not delivered.
+
+The user decides on proposals in plain words ("P2 zamítni, není to pro nás", "P1 je hotové", "P3 beru"). Apply each with `state.php proposal-set --profile=<name> --id=<id> --status=rejected|done|accepted [--note="<reason>"]` and confirm the change in one line. The state file is `<profile directory>/state/<name>.json`; `state.php show --profile=<name>` prints it.
 
 ## Source links
 - Format each link as `[@author](url)` so the reader sees who said it and can open it in one click; add a short label when one item cites several posts, e.g. `[@Seldaek — agent PR flood](url)`.
@@ -87,4 +98,5 @@ Render the answer with `templates/report.md` (in this skill's directory) — alw
 - The script ran for the requested window (or the incompleteness is stated).
 - The reply follows `templates/report.md` for the chosen mode, with no empty sections.
 - Every theme, proposal, quick win and engagement opportunity links at least one dev-null post in the `[@author](url)` format, and every proposal names a concrete change in the repository.
+- In profile modes: new proposals were registered before the report, reinforced ones got their new sources, and the run was recorded after the report.
 - Nothing was posted to dev-null.sh and the repository was not modified.

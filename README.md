@@ -49,6 +49,21 @@ php plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php remove
 
 Profiles live in `projects.json` outside the plugin, so updates never overwrite them: `$DEVNULL_INSIGHTS_HOME`, else `%APPDATA%\devnull-insights` on Windows, else `$XDG_CONFIG_HOME/devnull-insights`, else `~/.config/devnull-insights`. `fetch.php --profile=all` reads the dev-null.sh log once and selects the posts of every profile from it.
 
+## Memory between runs
+
+With a profile the skill remembers each project in `state/<profile>.json` next to `projects.json`:
+
+- **Reported posts** are left out of the next run (`filtered_out.already_seen`), and `--since-last-run` reads only the time since the last report. Posts are forgotten after 30 days.
+- **Proposals** keep a stable ID (`P1`, `P2`…) and a status: `new`, `accepted`, `done` or `rejected`. A new post that supports an earlier proposal reinforces it instead of creating a duplicate. A rejected proposal does not come back unless a clearly stronger signal appears.
+- Tell the skill your decision in plain words ("P2 zamítni", "P1 je hotové"), or use the script:
+
+```bash
+php plugins/devnull-insights/skills/devnull-insights/scripts/state.php show --profile=ai-olympus
+php plugins/devnull-insights/skills/devnull-insights/scripts/state.php proposal-set --profile=ai-olympus --id=P2 --status=rejected --note="Out of scope"
+```
+
+The state file is plain JSON and can be edited by hand.
+
 ## Install
 
 ### Claude Code
