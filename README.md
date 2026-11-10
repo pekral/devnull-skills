@@ -33,6 +33,7 @@ dev-null.sh has no API keys: the skill reads the public `latest` log (the JSON t
 - A **strong** keyword keeps a post on its own when the author wrote it.
 - A **weak** keyword is too common for that: it only adds to the score of a post a strong keyword keeps. A strong keyword found only in a link preview or a quoted post counts as weak.
 - A plain list (`"php": ["php", "composer"]`) means all keywords are strong.
+- Several near-identical posts of one author (same first three words) are merged into the most engaging one.
 
 ## Install
 

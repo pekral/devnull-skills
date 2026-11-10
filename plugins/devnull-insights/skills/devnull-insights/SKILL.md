@@ -18,28 +18,30 @@ metadata:
 ## Inputs
 - **Repository** — GitHub URL or local path (e.g. `https://github.com/pekral/ai-olympus`). Optional: without it, produce only the topic digest.
 - **Window** — hours to look back, default `24`.
-- **Topics** — `topics.json` next to this file (php, laravel, ai-coding, oss-growth). The user may ask to add/remove topics; edit that file when they want the change to persist.
+- **Topics** — `topics.json` next to this file (php, laravel, ai-coding, oss-growth). Each topic has `strong` keywords, specific enough to keep a post on their own, and `weak` keywords, too generic for that (a plain list means all strong). The user may ask to add/remove topics or keywords; edit that file when they want the change to persist.
 
 ## Required approach
 
 ### 1. Understand the repository
 - Local path: read it directly. GitHub URL: `gh repo view <owner/repo> --json name,description,repositoryTopics,stargazerCount,forkCount,updatedAt,latestRelease,homepageUrl`, read the README (`gh api repos/<owner/repo>/readme -H "Accept: application/vnd.github.raw"`), `composer.json` and the top-level tree (`gh api repos/<owner/repo>/contents`).
 - Capture: what problem it solves, target users, main features, install path, current stars/topics, obvious gaps (missing quick start, demo, badges, topics, releases, docs).
-- Derive 5–15 **repository keywords**: product name, core concepts, competitor/adjacent tools, problems it solves (e.g. for an AI-agent skills repo: `skills`, `claude code`, `code review`, `agent workflow`, `cursor rules`).
+- Derive 5–15 **repository keywords**: product name, core concepts, competitor/adjacent tools, problems it solves. Split them:
+  - **strong** (`--keywords`) — specific terms that make a post relevant on their own: the product name, `claude code`, `subagents`, `agents.md`.
+  - **weak** (`--weak-keywords`) — common words that also appear in unrelated posts: `skills`, `rules`, `workflow`, `pull request`, `code review`. A post that hits weak keywords only is dropped.
 
 ### 2. Fetch posts
 `<skill-dir>` is the directory containing this SKILL.md (the base directory the agent was given when loading the skill).
 ```bash
-php <skill-dir>/scripts/fetch.php --hours=24 --keywords="kw1,kw2,..." --output=<scratch-dir>/devnull.json
+php <skill-dir>/scripts/fetch.php --hours=24 --keywords="strong1,strong2" --weak-keywords="weak1,weak2" --output=<scratch-dir>/devnull.json
 ```
 - Cross-platform: the same command works in bash, zsh, cmd and PowerShell on Windows, macOS and Linux. Needs PHP 8.3+ with ext-openssl only. Always use `--output`, never `>`: Windows PowerShell 5.1 re-encodes redirected output to UTF-16. Use the OS path style for `<scratch-dir>` and quote paths containing spaces. Do not pipe the output through Unix-only tools (`jq`, `grep`, `base64`); read the JSON file directly or process it with `php -r`.
-- Options: `--output=file.json`, `--hours=N`, `--topics=path.json`, `--keywords=a,b` (added as topic `repository`), `--max-pages=N` (20 posts per page, default 100), `--trending=N`, `--no-replies`.
-- Output JSON: `scanned_posts`, `complete_window` (false = page limit hit, raise `--max-pages`), `matched[]` sorted by engagement (stars + 2×replies) with `url`, `author`, `body`, `link`, `topics` (topic → matched keywords), `replies[]`; and `trending_overall[]` regardless of topic.
+- Options: `--output=file.json`, `--hours=N`, `--topics=path.json`, `--keywords=a,b` and `--weak-keywords=c,d` (the strong and weak keywords of topic `repository`), `--min-score=N` (default 2 = one strong keyword; raise it when the result is still noisy), `--max-pages=N` (20 posts per page, default 100), `--trending=N`, `--no-replies`.
+- Output JSON: `scanned_posts`, `complete_window` (false = page limit hit, raise `--max-pages`), `matched[]` sorted by engagement (stars + 2×replies) with `id`, `url`, `author`, `body`, `link`, `topics` (topic → matched keywords), `score` (2 per strong keyword the author wrote, 1 per weak keyword or keyword found only in a link preview or quoted post), `series_count` (when several near-identical posts of one author were merged into this one), `replies[]`; `filtered_out` (`total`, `weak_only`, `below_min_score`, `series_merged`); and `trending_overall[]` regardless of topic.
 - Write the output to the session scratchpad, not the repository. Runtime is ~30–60 s per 24 h.
 - On any failure the script exits with code 1 and prints one `error:` line on stderr; it never returns an empty result instead. `error: dev-null.sh changed: …` means the site no longer answers in the expected shape: report it to the user, do not scrape HTML as a workaround. A `warning: replies of …` line and a `replies_error` field mark a post whose replies could not be loaded; the run itself is still valid.
 
 ### 3. Triage signals
-- Drop noise: keyword false positives (e.g. "agent" in an unrelated sense), job ads, greetings, pure self-promotion without discussion.
+- The script already drops weak-only matches and merges series of near-identical posts; report its `filtered_out.total` in *Method and limits*. Then drop the remaining noise: keyword false positives, job ads, greetings, pure self-promotion without discussion.
 - Classify each remaining post as one of: **pain point** (someone struggles), **wish** (someone wants a tool/feature), **trend** (many people talk about X), **competitor/adjacent** (a similar project is shared and how it was received), **distribution** (what makes posts/projects get attention here).
 - Read replies — they often carry the real need or objection.
 - Group posts by theme; a theme backed by several authors outweighs one popular post.

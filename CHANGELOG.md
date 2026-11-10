@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Added
-- Noise suppression (#1): topics have `strong` and `weak` keywords; weak-only matches are dropped, and a strong keyword found only in a link preview or quoted post counts as weak. Each matched post carries a relevance `score`, filtered by `--min-score`. The output reports `filtered_out` with the reasons. New options `--weak-keywords` and `--min-score`. On the live 24 h log with the ai-olympus keywords, matches dropped from 143 to 60 (58 %) and every post the ai-olympus report cited stayed.
+- Noise suppression (#1): topics have `strong` and `weak` keywords; weak-only matches are dropped, and a strong keyword found only in a link preview or quoted post counts as weak. Each matched post carries a relevance `score`, filtered by `--min-score`. Series of near-identical posts by one author are merged (`series_count`). The output reports `filtered_out` with the reasons. New options `--weak-keywords` and `--min-score`. On the live 24 h log with the ai-olympus keywords, matches dropped from 143 to 60 (58 %) and every post the ai-olympus report cited stayed.
 - Tests and CI: Pest suite with a `php -S` fixture server standing in for dev-null.sh, a portability scan of the plugin scripts, a CI matrix on Ubuntu, macOS and Windows × PHP 8.3–8.5 with manifest validation, and a daily contract smoke test against the live site that opens an issue on failure (#6).
 - `templates/report.md`: one Markdown report layout for every request (repository, digest and question modes) — header table, TL;DR, theme and proposal tables with stable IDs, quick-win checklist, engagement table, method and limits.
 

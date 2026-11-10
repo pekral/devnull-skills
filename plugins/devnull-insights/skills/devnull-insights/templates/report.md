@@ -81,6 +81,6 @@ Report template for devnull-insights. Rules:
 ## 7. ℹ️ Method and limits
 
 - **Source:** public `latest` log of dev-null.sh, read-only; nothing was posted, starred or replied.
-- **Filtered out:** {n} posts as noise ({main reasons, e.g. bot series, keyword false positives}).
+- **Filtered out:** {filtered_out.total} posts by the script ({weak_only} weak-only, {series_merged} merged into series, {below_min_score} below the score) and {n} more in triage ({main reasons}).
 - **Not verified:** {anything assumed but not checked, or "nothing"}.
 - **Re-run:** `/devnull-insights {same request}` — {suggested window or keyword change, if any}.
