@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- devnull-insights: daily report for all projects, weekdays at 07:07. Replace /Users/YOU and check `which claude`. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>cz.pekral.devnull-insights</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/YOU/.local/bin/claude</string>
+        <string>-p</string>
+        <string>/devnull-insights všechny projekty unattended</string>
+        <string>--permission-mode</string>
+        <string>dontAsk</string>
+        <string>--allowedTools</string>
+        <string>Bash(php *)</string>
+        <string>Bash(gh repo view *)</string>
+        <string>Bash(gh api *)</string>
+        <string>Read</string>
+        <string>Write</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/YOU/.local/bin</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>7</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>7</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>7</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>7</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>7</integer></dict>
+    </array>
+    <key>StandardOutPath</key>
+    <string>/Users/YOU/.config/devnull-insights/launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOU/.config/devnull-insights/launchd.log</string>
+</dict>
+</plist>
