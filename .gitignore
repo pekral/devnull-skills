@@ -3,3 +3,4 @@
 /.vscode/
 *.local.*
 .claude/settings.local.json
+/vendor/

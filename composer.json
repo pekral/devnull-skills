@@ -1,0 +1,30 @@
+{
+    "name": "pekral/devnull-skills",
+    "description": "Development tooling for the devnull-skills Claude Code and Codex plugin marketplace. The plugins themselves need no Composer.",
+    "license": "MIT",
+    "type": "project",
+    "require": {
+        "php": "^8.3"
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "DevnullInsights\\": "plugins/devnull-insights/skills/devnull-insights/scripts/src/",
+            "Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "platform": {
+            "php": "8.3.0"
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "pest --colors=always"
+    }
+}

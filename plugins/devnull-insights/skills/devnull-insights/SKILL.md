@@ -36,7 +36,7 @@ php <skill-dir>/scripts/fetch.php --hours=24 --keywords="kw1,kw2,..." --output=<
 - Options: `--output=file.json`, `--hours=N`, `--topics=path.json`, `--keywords=a,b` (added as topic `repository`), `--max-pages=N` (20 posts per page, default 100), `--trending=N`, `--no-replies`.
 - Output JSON: `scanned_posts`, `complete_window` (false = page limit hit, raise `--max-pages`), `matched[]` sorted by engagement (stars + 2×replies) with `url`, `author`, `body`, `link`, `topics` (topic → matched keywords), `replies[]`; and `trending_overall[]` regardless of topic.
 - Write the output to the session scratchpad, not the repository. Runtime is ~30–60 s per 24 h.
-- If the script fails with HTTP 409/419 or a missing `commits` prop, the site changed: report it, do not scrape HTML as a workaround.
+- On any failure the script exits with code 1 and prints one `error:` line on stderr; it never returns an empty result instead. `error: dev-null.sh changed: …` means the site no longer answers in the expected shape: report it to the user, do not scrape HTML as a workaround. A `warning: replies of …` line and a `replies_error` field mark a post whose replies could not be loaded; the run itself is still valid.
 
 ### 3. Triage signals
 - Drop noise: keyword false positives (e.g. "agent" in an unrelated sense), job ads, greetings, pure self-promotion without discussion.
