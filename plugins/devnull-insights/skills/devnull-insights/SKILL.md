@@ -23,16 +23,17 @@ metadata:
 ## Required approach
 
 ### 1. Understand the repository
-- Local path: read it directly. GitHub URL: `gh repo view <owner/repo> --json name,description,repositoryTopics,stargazerCount,forkCount,updatedAt,latestRelease,homepageUrl`, read the README (`gh api repos/<owner/repo>/readme --jq .content | base64 -d`), `composer.json` and the top-level tree (`gh api repos/<owner/repo>/contents`).
+- Local path: read it directly. GitHub URL: `gh repo view <owner/repo> --json name,description,repositoryTopics,stargazerCount,forkCount,updatedAt,latestRelease,homepageUrl`, read the README (`gh api repos/<owner/repo>/readme -H "Accept: application/vnd.github.raw"`), `composer.json` and the top-level tree (`gh api repos/<owner/repo>/contents`).
 - Capture: what problem it solves, target users, main features, install path, current stars/topics, obvious gaps (missing quick start, demo, badges, topics, releases, docs).
 - Derive 5–15 **repository keywords**: product name, core concepts, competitor/adjacent tools, problems it solves (e.g. for an AI-agent skills repo: `skills`, `claude code`, `code review`, `agent workflow`, `cursor rules`).
 
 ### 2. Fetch posts
 `<skill-dir>` is the directory containing this SKILL.md (the base directory the agent was given when loading the skill).
 ```bash
-php <skill-dir>/scripts/fetch.php --hours=24 --keywords="kw1,kw2,..." > <scratch-dir>/devnull.json
+php <skill-dir>/scripts/fetch.php --hours=24 --keywords="kw1,kw2,..." --output=<scratch-dir>/devnull.json
 ```
-- Options: `--hours=N`, `--topics=path.json`, `--keywords=a,b` (added as topic `repository`), `--max-pages=N` (20 posts per page, default 100), `--trending=N`, `--no-replies`.
+- Cross-platform: the same command works in bash, zsh, cmd and PowerShell on Windows, macOS and Linux. Needs PHP 8.3+ with ext-openssl only. Always use `--output`, never `>`: Windows PowerShell 5.1 re-encodes redirected output to UTF-16. Use the OS path style for `<scratch-dir>` and quote paths containing spaces. Do not pipe the output through Unix-only tools (`jq`, `grep`, `base64`); read the JSON file directly or process it with `php -r`.
+- Options: `--output=file.json`, `--hours=N`, `--topics=path.json`, `--keywords=a,b` (added as topic `repository`), `--max-pages=N` (20 posts per page, default 100), `--trending=N`, `--no-replies`.
 - Output JSON: `scanned_posts`, `complete_window` (false = page limit hit, raise `--max-pages`), `matched[]` sorted by engagement (stars + 2×replies) with `url`, `author`, `body`, `link`, `topics` (topic → matched keywords), `replies[]`; and `trending_overall[]` regardless of topic.
 - Write the output to the session scratchpad, not the repository. Runtime is ~30–60 s per 24 h.
 - If the script fails with HTTP 409/419 or a missing `commits` prop, the site changed: report it, do not scrape HTML as a workaround.

@@ -9,14 +9,16 @@ declare(strict_types=1);
  * SSH device key, and commit search requires a GitHub session. The public log is served by Inertia, so asking for it
  * with the X-Inertia header returns the same JSON the web app renders, newest first with a cursor.
  *
- * Usage: php fetch.php [--hours=24] [--topics=topics.json] [--keywords=a,b,c] [--max-pages=100] [--no-replies] [--trending=10]
- * Output: JSON on stdout, progress on stderr.
+ * Runs unchanged on Windows, macOS and Linux with PHP 8.3+ and ext-openssl (no ext-curl, no shell tools).
+ *
+ * Usage: php fetch.php [--hours=24] [--topics=topics.json] [--keywords=a,b,c] [--max-pages=100] [--no-replies] [--trending=10] [--output=file.json]
+ * Output: UTF-8 JSON to --output (or stdout), progress on stderr. Prefer --output: Windows PowerShell 5.1 re-encodes `>` redirects to UTF-16.
  */
 
 const BASE = 'https://dev-null.sh';
 const USER_AGENT = 'devnull-insights-skill/1.0';
 
-$options = getopt('', ['hours::', 'topics::', 'keywords::', 'max-pages::', 'no-replies', 'trending::']);
+$options = getopt('', ['hours::', 'topics::', 'keywords::', 'max-pages::', 'no-replies', 'trending::', 'output::']);
 $hours = (float) ($options['hours'] ?? 24);
 $maxPages = (int) ($options['max-pages'] ?? 100);
 $trendingCount = (int) ($options['trending'] ?? 10);
@@ -34,7 +36,7 @@ if (isset($options['keywords']) && $options['keywords'] !== '') {
 $patterns = [];
 foreach ($topics as $topic => $keywords) {
     foreach ((array) $keywords as $keyword) {
-        $patterns[$topic][$keyword] = '/(?<![\p{L}\p{N}_])'.preg_quote(mb_strtolower((string) $keyword), '/').'(?![\p{L}\p{N}_])/u';
+        $patterns[$topic][$keyword] = '/(?<![\p{L}\p{N}_])'.preg_quote((string) $keyword, '/').'(?![\p{L}\p{N}_])/iu';
     }
 }
 
@@ -67,13 +69,13 @@ if ($url !== null) {
 
 $matched = [];
 foreach ($posts as $commit) {
-    $text = mb_strtolower(implode("\n", array_filter([
+    $text = implode("\n", array_filter([
         $commit['body'] ?? '',
         $commit['link_preview']['url'] ?? '',
         $commit['link_preview']['title'] ?? '',
         $commit['link_preview']['description'] ?? '',
         $commit['quoted_commit']['body'] ?? '',
-    ])));
+    ]));
 
     $hits = [];
     foreach ($patterns as $topic => $keywordPatterns) {
@@ -100,7 +102,7 @@ usort($matched, fn (array $a, array $b): int => engagement($b) <=> engagement($a
 $all = array_map(summarize(...), array_values($posts));
 usort($all, fn (array $a, array $b): int => engagement($b) <=> engagement($a));
 
-echo json_encode([
+$json = json_encode([
     'source' => BASE.'/log/latest',
     'window' => ['from' => $cutoff->format(DATE_ATOM), 'to' => gmdate(DATE_ATOM), 'hours' => $hours],
     'scanned_posts' => count($posts),
@@ -109,7 +111,14 @@ echo json_encode([
     'matched_count' => count($matched),
     'matched' => $matched,
     'trending_overall' => array_slice($all, 0, $trendingCount),
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL;
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).PHP_EOL;
+
+if (isset($options['output']) && $options['output'] !== '') {
+    file_put_contents((string) $options['output'], $json) !== false || fail("Cannot write {$options['output']}");
+    fwrite(STDERR, "written to {$options['output']}\n");
+} else {
+    echo $json;
+}
 
 function summarize(array $commit): array
 {
@@ -153,25 +162,47 @@ function replies(string $id): array
 /** The asset version changes with each deploy; a request without it gets 409 with the current one in a header. */
 function inertiaVersion(): string
 {
-    $headers = [];
-    $curl = curl_init(BASE.'/log/latest');
-    curl_setopt_array($curl, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_USERAGENT => USER_AGENT,
-        CURLOPT_HTTPHEADER => ['X-Inertia: true', 'X-Requested-With: XMLHttpRequest'],
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HEADERFUNCTION => function ($curl, string $line) use (&$headers): int {
-            if (str_contains($line, ':')) {
-                [$name, $value] = explode(':', $line, 2);
-                $headers[strtolower(trim($name))] = trim($value);
-            }
-
-            return strlen($line);
-        },
-    ]);
-    curl_exec($curl);
+    ['headers' => $headers] = http(BASE.'/log/latest', ['X-Inertia: true', 'X-Requested-With: XMLHttpRequest']);
 
     return $headers['x-inertia-version'] ?? fail('Cannot detect the Inertia version of dev-null.sh');
+}
+
+/**
+ * A GET over PHP's own HTTPS stream wrapper, so the script needs no ext-curl and runs the same on Windows, macOS and
+ * Linux: only ext-openssl, which Composer itself requires.
+ *
+ * @param  list<string>  $headers
+ * @return array{status: int, headers: array<string, string>, body: string}
+ */
+function http(string $url, array $headers): array
+{
+    if (! extension_loaded('openssl')) {
+        fail('PHP extension "openssl" is required for HTTPS (enable extension=openssl in php.ini)');
+    }
+
+    $context = stream_context_create(['http' => [
+        'method' => 'GET',
+        'header' => implode("\r\n", $headers),
+        'user_agent' => USER_AGENT,
+        'timeout' => 30,
+        'ignore_errors' => true,
+    ]]);
+    $body = @file_get_contents($url, false, $context);
+    $lines = function_exists('http_get_last_response_headers') ? (http_get_last_response_headers() ?? []) : ($http_response_header ?? []);
+
+    $status = 0;
+    $parsed = [];
+    foreach ($lines as $line) {
+        if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $match) === 1) {
+            $status = (int) $match[1];
+            $parsed = [];
+        } elseif (str_contains($line, ':')) {
+            [$name, $value] = explode(':', $line, 2);
+            $parsed[strtolower(trim($name))] = trim($value);
+        }
+    }
+
+    return ['status' => $status, 'headers' => $parsed, 'body' => is_string($body) ? $body : ''];
 }
 
 /** @return list<string> */
@@ -183,23 +214,15 @@ function inertiaHeaders(string $version): array
 function request(string $url, array $headers): array
 {
     for ($attempt = 1; $attempt <= 3; $attempt++) {
-        $curl = curl_init($url);
-        curl_setopt_array($curl, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_USERAGENT => USER_AGENT,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => 30,
-        ]);
-        $body = curl_exec($curl);
-        $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        ['status' => $status, 'body' => $body] = http($url, $headers);
 
-        if ($status === 200 && is_string($body)) {
+        if ($status === 200) {
             $data = json_decode($body, true);
             if (is_array($data)) {
                 return $data;
             }
         }
-        if ($status !== 429 && $status < 500) {
+        if ($status !== 0 && $status !== 429 && $status < 500) {
             throw new RuntimeException("HTTP {$status} for {$url}");
         }
         sleep(5 * $attempt);

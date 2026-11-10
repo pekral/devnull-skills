@@ -12,7 +12,7 @@ Example prompt:
 
 ## Requirements
 
-- PHP 8.3+ CLI with the `curl` extension (the fetch script has no other dependencies)
+- PHP 8.3+ CLI with `ext-openssl` (already required by Composer) — no other extensions, no shell tools; works the same on Windows, macOS and Linux
 - `gh` CLI signed in, when analysing a GitHub repository
 
 dev-null.sh has no API keys: the skill reads the public `latest` log (the JSON the web app itself loads) and never signs in, posts or stars anything.
@@ -41,7 +41,7 @@ This repository is its own test bed:
 - **Fastest loop** — `.claude/skills/devnull-insights` is a symlink to the plugin's skill, so Claude Code opened in this directory loads your working copy as a project skill. Edit, then start a new session (or `/reload-plugins`) and run `/devnull-insights`.
 - **Marketplace flow** — `/plugin marketplace add ./` then `/plugin install devnull-insights@devnull-skills` installs from the local checkout exactly as users will. Avoid having both active at once, or the skill appears twice.
 - **Codex** — `codex plugin marketplace add ./`.
-- **Script only** — `php plugins/devnull-insights/skills/devnull-insights/scripts/fetch.php --hours=6 --keywords="ai-olympus,skills"`.
+- **Script only** — `php plugins/devnull-insights/skills/devnull-insights/scripts/fetch.php --hours=6 --keywords="ai-olympus,skills" --output=devnull.json`.
 - **Validate** — `claude plugin validate .` and `claude plugin validate plugins/devnull-insights`.
 
 ## Releasing
