@@ -17,7 +17,7 @@ test('archive.php saves into the profile directory, lists and finds the latest r
         ->and($saved['json']['report'])->toBe($home.DIRECTORY_SEPARATOR.'reports'.DIRECTORY_SEPARATOR.'2026-11-10-all-projects-weekly.md')
         ->and($list['json']['reports'])->toHaveCount(1)
         ->and($latest['json']['data'])->toEndWith('2026-11-10-all-projects-weekly.json')
-        ->and($none['stdout'])->toBe("null\n");
+        ->and($none['stdout'])->toBe('null'.PHP_EOL);
 });
 
 test('archive.php writes today\'s date by default and accepts another directory', function (): void {
