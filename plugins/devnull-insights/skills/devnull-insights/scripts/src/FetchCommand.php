@@ -57,7 +57,7 @@ final readonly class FetchCommand
         }
 
         $candidates = [];
-        $filtered = ['weak_only' => 0, 'below_min_score' => 0];
+        $filtered = ['weak_only' => 0, 'below_min_score' => 0, 'series_merged' => 0];
         foreach ($window['posts'] as $commit) {
             $match = $matcher->match($commit);
             if ($match['topics'] === []) {
@@ -75,7 +75,7 @@ final readonly class FetchCommand
             $candidates[] = Posts::summarize($commit, $this->client->baseUrl()) + ['topics' => $match['topics'], 'score' => $match['score']];
         }
 
-        $matched = Posts::byEngagement($candidates);
+        ['entries' => $matched, 'merged' => $filtered['series_merged']] = Series::collapse(Posts::byEngagement($candidates));
 
         if (! isset($options['no-replies'])) {
             $matched = array_map(fn (array $entry): array => $entry['replies_count'] > 0 ? $this->withReplies($entry, (string) $entry['id']) : $entry, $matched);
@@ -93,7 +93,7 @@ final readonly class FetchCommand
             'matched_count' => count($matched),
             'filtered_out' => ['total' => array_sum($filtered)] + $filtered,
             'matched' => $matched,
-            'trending_overall' => array_slice(Posts::byEngagement($all), 0, $trending),
+            'trending_overall' => array_slice(Series::collapse(Posts::byEngagement($all))['entries'], 0, $trending),
         ]);
     }
 
