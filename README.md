@@ -64,6 +64,16 @@ php plugins/devnull-insights/skills/devnull-insights/scripts/state.php proposal-
 
 The state file is plain JSON and can be edited by hand.
 
+## From proposal to issue
+
+After a report, ask for issues by proposal ID — "založ issues pro P1 a P3". The skill:
+
+1. skips proposals that already have an issue and searches the repository for similar titles,
+2. drafts each issue from `templates/issue.md` with the dev-null source links,
+3. shows the preview and creates nothing until you confirm,
+4. creates the issues with `gh issue create --body-file` (optional label `from-devnull`),
+5. stores each issue link on its proposal, so the next report knows it is being worked on.
+
 ## Install
 
 ### Claude Code
