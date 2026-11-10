@@ -35,6 +35,20 @@ dev-null.sh has no API keys: the skill reads the public `latest` log (the JSON t
 - A plain list (`"php": ["php", "composer"]`) means all keywords are strong.
 - Several near-identical posts of one author (same first three words) are merged into the most engaging one.
 
+## Project profiles
+
+A profile saves a repository with its keywords, so `/devnull-insights ai-olympus` or `/devnull-insights všechny projekty` runs without questions. The skill proposes a profile after the first report for a new repository and saves it when you confirm. You can also manage profiles yourself:
+
+```bash
+php plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php list
+php plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php save --name=ai-olympus \
+    --repository=https://github.com/pekral/ai-olympus --keywords="ai-olympus,claude code,subagents" \
+    --weak-keywords="skills,rules" --exclude-keywords="hiring" --topics=php,laravel,ai-coding --hours=24
+php plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php remove --name=ai-olympus
+```
+
+Profiles live in `projects.json` outside the plugin, so updates never overwrite them: `$DEVNULL_INSIGHTS_HOME`, else `%APPDATA%\devnull-insights` on Windows, else `$XDG_CONFIG_HOME/devnull-insights`, else `~/.config/devnull-insights`. `fetch.php --profile=all` reads the dev-null.sh log once and selects the posts of every profile from it.
+
 ## Install
 
 ### Claude Code
