@@ -14,6 +14,9 @@ Report template for devnull-insights. Rules:
 - Every row with a post carries its source link `[@author](url)` (see Source links in SKILL.md).
 - Table cells stay short (≤ 12 words); detail goes under the table, never inside it.
 - Strength: ●●● = 3+ independent authors or strong engagement, ●●○ = 2 authors or one well-discussed post, ●○○ = one post.
+- With a profile, proposal IDs are the stable IDs from the project's state (`P7`), not a fresh 1…n numbering.
+- With a profile, the header **Window** line says "since the last run on {last_run_at}" when --since-last-run set it, and
+  **Posts** adds "{already_seen} already reported".
 -->
 
 # 📡 /dev/null insights — {subject}
@@ -58,6 +61,10 @@ Report template for devnull-insights. Rules:
 | # | Proposal | Themes | Impact | Effort | Risk |
 |---|---|---|---|---|---|
 | P1 | {imperative, ≤ 8 words} | T1, T3 | high | S | low |
+
+**Reinforced earlier proposals** (optional, profile modes only — earlier proposals that new posts support)
+
+- **P{id}** {title} ({status}{, previously rejected: note}) — new: [@author](url)
 
 ### P1 — {proposal title}
 - **Change:** {concrete files, sections, commands, features}
