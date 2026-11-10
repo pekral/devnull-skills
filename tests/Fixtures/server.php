@@ -6,7 +6,8 @@ declare(strict_types=1);
  * Router for `php -S`: a stand-in for dev-null.sh. The first path segment names the scenario, so one server serves
  * every test: http://127.0.0.1:<port>/<scenario>/log/latest.
  *
- * Scenarios: ok, changed, noversion, flaky (429 once), redeploy (version changes mid-run), badreplies (replies 500).
+ * Scenarios: ok, noisy (the noise patterns of a real run), changed, noversion, flaky (429 once), redeploy (version
+ * changes mid-run), badreplies (replies 500).
  */
 
 $path = (string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -56,6 +57,16 @@ $pages = [
     ],
 ];
 
+$noisy = [
+    1 => [
+        ...array_map(static fn (int $n): array => $post("r{$n}", 'reelbot', 5 + $n, "Merged in reelhouse: feat: change {$n}, pull request #{$n}", extra: ['link_preview' => ['url' => "https://github.com/x/reelhouse/pull/{$n}", 'title' => "feat: change {$n} · Pull Request #{$n}"]]), range(1, 5)),
+        $post('n1', 'puzzler', 20, 'Cryptogram 345: I cracked the code with my skills'),
+        $post('n2', 'robots', 25, 'My robots.txt analyzer scores the crawl rules of any site'),
+        $post('s1', 'pestcore', 30, 'Someone made a fake copy of a Claude skill with a backdoor. Review skills like Composer dependencies.', 4, 2),
+        $post('s2', 'maintainer', 35, 'Agentic PR floods hit open source maintainers hard', 0, 4),
+    ],
+];
+
 if ($route === 'log/latest') {
     if ($scenario === 'noversion') {
         return $json(['message' => 'Not Found'], 404);
@@ -75,6 +86,7 @@ if ($route === 'log/latest') {
     }
 
     $page = (int) ($_GET['cursor'] ?? 1);
+    $pages = $scenario === 'noisy' ? $noisy : $pages;
 
     return $json([
         'component' => 'log/show',

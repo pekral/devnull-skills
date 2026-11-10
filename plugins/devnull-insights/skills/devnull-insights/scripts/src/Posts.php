@@ -14,6 +14,7 @@ final class Posts
     public static function summarize(array $commit, string $baseUrl): array
     {
         return array_filter([
+            'id' => $commit['id'],
             'url' => $baseUrl.'/@'.$commit['author']['handle'].'/commits/'.$commit['id'],
             'author' => '@'.$commit['author']['handle'],
             'author_bio' => $commit['author']['bio'] ?? null,

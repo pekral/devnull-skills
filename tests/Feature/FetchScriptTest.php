@@ -105,3 +105,21 @@ test('invalid options fail with a clear message', function (string $option, stri
     ['--max-pages=-1', '--max-pages must be a positive number'],
     ['--topics=missing.json', 'Cannot read topics from missing.json'],
 ]);
+
+test('noise is filtered out and reported, signal posts stay', function (): void {
+    $run = runFetch('noisy', ['--hours=24', '--no-replies', '--keywords=pull request', '--weak-keywords=rules,workflow']);
+    $json = $run['json'];
+
+    expect($run['exit'])->toBe(0, $run['stderr'])
+        ->and(array_column($json['matched'], 'author'))->toBe(['@pestcore', '@maintainer', '@reelbot', '@reelbot', '@reelbot', '@reelbot', '@reelbot'])
+        ->and($json['matched'][0]['score'])->toBeGreaterThanOrEqual(2)
+        ->and($json['filtered_out'])->toBe(['total' => 2, 'weak_only' => 2, 'below_min_score' => 0])
+        ->and($json['min_score'])->toBe(2);
+});
+
+test('--min-score drops posts below the threshold', function (): void {
+    $run = runFetch('noisy', ['--hours=24', '--no-replies', '--min-score=5']);
+
+    expect(array_column($run['json']['matched'], 'author'))->toBe(['@pestcore'])
+        ->and($run['json']['filtered_out']['below_min_score'])->toBe(1);
+});
