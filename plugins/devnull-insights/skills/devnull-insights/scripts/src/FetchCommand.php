@@ -86,6 +86,7 @@ final readonly class FetchCommand
                 'min_score' => $minScore,
                 'matched_count' => count($selected['matched']),
                 'filtered_out' => $selected['filtered'],
+                'topic_counts' => $selected['topic_counts'],
                 'matched' => $this->withAllReplies($options, $selected['matched'], $replies),
             ];
         } else {
@@ -105,6 +106,7 @@ final readonly class FetchCommand
                     'min_score' => $minScore,
                     'matched_count' => count($selected['matched']),
                     'filtered_out' => $selected['filtered'],
+                    'topic_counts' => $selected['topic_counts'],
                     'matched' => $this->withAllReplies($options, $selected['matched'], $replies),
                     'proposals' => $state['proposals'],
                 ];
