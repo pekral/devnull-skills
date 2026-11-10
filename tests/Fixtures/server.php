@@ -67,7 +67,13 @@ $noisy = [
     ],
 ];
 
+if ($scenario === '__hits') {
+    // Reads a request counter without counting: /__hits/<scenario>
+    return $json(['count' => (int) @file_get_contents(sys_get_temp_dir().'/devnull-fixture-'.$_SERVER['SERVER_PORT'].'-log-'.$route)]);
+}
+
 if ($route === 'log/latest') {
+    $hit("log-{$scenario}");
     if ($scenario === 'noversion') {
         return $json(['message' => 'Not Found'], 404);
     }

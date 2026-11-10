@@ -11,17 +11,24 @@ use JsonException;
 /**
  * Builds the JSON the skill reads: the posts of the last N hours that match the topics, with their replies, plus the
  * most engaging posts overall.
+ *
+ * With --profile it reads the log once and selects the posts of each saved project profile from it.
  */
 final readonly class FetchCommand
 {
-    public const array Options = ['hours::', 'topics::', 'keywords::', 'weak-keywords::', 'min-score::', 'max-pages::', 'no-replies', 'trending::', 'output::'];
+    public const array Options = ['hours::', 'topics::', 'keywords::', 'weak-keywords::', 'min-score::', 'profile::', 'max-pages::', 'no-replies', 'trending::', 'output::'];
 
     /**
      * @param  resource  $stdout
      * @param  resource  $stderr
      */
-    public function __construct(private DevnullClient $client, private string $defaultTopicsFile, private mixed $stdout, private mixed $stderr)
-    {
+    public function __construct(
+        private DevnullClient $client,
+        private string $defaultTopicsFile,
+        private mixed $stdout,
+        private mixed $stderr,
+        private ?ProfileStore $profiles = null,
+    ) {
     }
 
     /** @param array<string, string|false|list<string|false>> $options as returned by getopt() with self::Options */
@@ -41,60 +48,138 @@ final readonly class FetchCommand
     /** @param array<string, string|false|list<string|false>> $options */
     private function execute(array $options): void
     {
-        $hours = $this->number($options, 'hours', 24);
         $maxPages = (int) $this->number($options, 'max-pages', 100);
         $trending = (int) $this->number($options, 'trending', 10, allowZero: true);
         $minScore = (int) $this->number($options, 'min-score', TopicMatcher::StrongWeight);
-        $matcher = TopicMatcher::fromTopics($topics = $this->topics($options));
+        $topics = $this->topics($options);
+        $profiles = $this->selectedProfiles($options);
 
-        $cutoff = (new DateTimeImmutable('@'.(time() - (int) round($hours * 3600))))->setTimezone(new DateTimeZone('UTC'));
-        $window = $this->client->window($cutoff, $maxPages, function (int $page, int $posts): void {
+        $hours = $this->number($options, 'hours', $profiles === [] ? ProfileStore::DefaultHours : max(array_column($profiles, 'hours')));
+        $now = time();
+        $since = static fn (float $hours): DateTimeImmutable => (new DateTimeImmutable('@'.($now - (int) round($hours * 3600))))->setTimezone(new DateTimeZone('UTC'));
+
+        $window = $this->client->window($since($hours), $maxPages, function (int $page, int $posts): void {
             fwrite($this->stderr, "page {$page}: {$posts} posts so far\n");
         });
-
         if (! $window['complete']) {
             fwrite($this->stderr, "warning: stopped at --max-pages={$maxPages} before reaching the {$hours}h cutoff\n");
         }
 
-        $candidates = [];
-        $filtered = ['weak_only' => 0, 'below_min_score' => 0, 'series_merged' => 0];
-        foreach ($window['posts'] as $commit) {
-            $match = $matcher->match($commit);
-            if ($match['topics'] === []) {
-                continue;
-            }
-            if ($match['strong'] === 0) {
-                $filtered['weak_only']++;
-                continue;
-            }
-            if ($match['score'] < $minScore) {
-                $filtered['below_min_score']++;
-                continue;
-            }
+        $report = [
+            'source' => $this->client->baseUrl().'/log/latest',
+            'window' => ['from' => $since($hours)->format(DATE_ATOM), 'to' => gmdate(DATE_ATOM, $now), 'hours' => $hours],
+            'scanned_posts' => count($window['posts']),
+            'complete_window' => $window['complete'],
+        ];
 
-            $candidates[] = Posts::summarize($commit, $this->client->baseUrl()) + ['topics' => $match['topics'], 'score' => $match['score']];
-        }
+        $replies = [];
+        if ($profiles === []) {
+            $selected = (new Selection(TopicMatcher::fromTopics($topics), $minScore, $since($hours)))->select($window['posts'], $this->client->baseUrl());
+            $report += [
+                'topics' => array_keys($topics),
+                'min_score' => $minScore,
+                'matched_count' => count($selected['matched']),
+                'filtered_out' => $selected['filtered'],
+                'matched' => $this->withAllReplies($options, $selected['matched'], $replies),
+            ];
+        } else {
+            $report['projects'] = [];
+            foreach ($profiles as $profile) {
+                $projectTopics = $this->projectTopics($topics, $profile);
+                $projectHours = $this->string($options, 'hours') !== null ? $hours : $profile['hours'];
+                $exclude = $profile['exclude_keywords'] === [] ? null : TopicMatcher::fromTopics(['exclude' => $profile['exclude_keywords']]);
+                $selected = (new Selection(TopicMatcher::fromTopics($projectTopics), $minScore, $since($projectHours), $exclude))->select($window['posts'], $this->client->baseUrl());
 
-        ['entries' => $matched, 'merged' => $filtered['series_merged']] = Series::collapse(Posts::byEngagement($candidates));
-
-        if (! isset($options['no-replies'])) {
-            $matched = array_map(fn (array $entry): array => $entry['replies_count'] > 0 ? $this->withReplies($entry, (string) $entry['id']) : $entry, $matched);
+                $report['projects'][] = [
+                    'name' => $profile['name'],
+                    'repository' => $profile['repository'],
+                    'hours' => $projectHours,
+                    'topics' => array_keys($projectTopics),
+                    'min_score' => $minScore,
+                    'matched_count' => count($selected['matched']),
+                    'filtered_out' => $selected['filtered'],
+                    'matched' => $this->withAllReplies($options, $selected['matched'], $replies),
+                ];
+            }
         }
 
         $all = array_map(fn (array $commit): array => Posts::summarize($commit, $this->client->baseUrl()), array_values($window['posts']));
+        $report['trending_overall'] = array_slice(Series::collapse(Posts::byEngagement($all))['entries'], 0, $trending);
 
-        $this->write($options, [
-            'source' => $this->client->baseUrl().'/log/latest',
-            'window' => ['from' => $cutoff->format(DATE_ATOM), 'to' => gmdate(DATE_ATOM), 'hours' => $hours],
-            'scanned_posts' => count($window['posts']),
-            'complete_window' => $window['complete'],
-            'topics' => array_keys($topics),
-            'min_score' => $minScore,
-            'matched_count' => count($matched),
-            'filtered_out' => ['total' => array_sum($filtered)] + $filtered,
-            'matched' => $matched,
-            'trending_overall' => array_slice(Series::collapse(Posts::byEngagement($all))['entries'], 0, $trending),
-        ]);
+        $this->write($options, $report);
+    }
+
+    /**
+     * @param  array<string, string|false|list<string|false>>  $options
+     * @return list<array{name: string, repository: string, keywords: list<string>, weak_keywords: list<string>, exclude_keywords: list<string>, topics: list<string>, hours: float}>
+     */
+    private function selectedProfiles(array $options): array
+    {
+        $names = $this->string($options, 'profile');
+        if ($names === null) {
+            return [];
+        }
+
+        if ($this->string($options, 'keywords') !== null || $this->string($options, 'weak-keywords') !== null) {
+            throw new DevnullException('--keywords and --weak-keywords cannot be combined with --profile: change the profile with profiles.php save');
+        }
+
+        $store = $this->profiles ?? throw new DevnullException('No profile store is configured');
+        if ($names === 'all') {
+            $profiles = array_values($store->all());
+
+            return $profiles !== [] ? $profiles : throw new DevnullException("No profiles saved in {$store->path()}");
+        }
+
+        return array_map(
+            static fn (string $name): array => $store->get($name),
+            array_values(array_unique(array_filter(array_map('trim', explode(',', $names)), static fn (string $name): bool => $name !== ''))),
+        );
+    }
+
+    /**
+     * The profile's topics (all when it names none) plus its own keywords as topic "repository".
+     *
+     * @param  array<string, array{strong: list<string>, weak: list<string>}>  $topics
+     * @param  array{name: string, keywords: list<string>, weak_keywords: list<string>, topics: list<string>}  $profile
+     * @return array<string, array{strong: list<string>, weak: list<string>}>
+     */
+    private function projectTopics(array $topics, array $profile): array
+    {
+        $unknown = array_diff($profile['topics'], array_keys($topics));
+        if ($unknown !== []) {
+            throw new DevnullException("Profile \"{$profile['name']}\" names unknown topics: ".implode(', ', $unknown));
+        }
+
+        $chosen = $profile['topics'] === [] ? $topics : array_intersect_key($topics, array_flip($profile['topics']));
+
+        return $chosen + ['repository' => ['strong' => $profile['keywords'], 'weak' => $profile['weak_keywords']]];
+    }
+
+    /**
+     * Loads replies once per post, even when several projects list the same post.
+     *
+     * @param  array<string, string|false|list<string|false>>  $options
+     * @param  list<array<string, mixed>>  $matched
+     * @param  array<string, array<string, mixed>>  $cache  id => entry fields from the replies request
+     * @return list<array<string, mixed>>
+     */
+    private function withAllReplies(array $options, array $matched, array &$cache): array
+    {
+        if (isset($options['no-replies'])) {
+            return $matched;
+        }
+
+        return array_map(function (array $entry) use (&$cache): array {
+            if ($entry['replies_count'] === 0) {
+                return $entry;
+            }
+
+            $id = (string) $entry['id'];
+            $cache[$id] ??= $this->withReplies([], $id);
+
+            return $entry + $cache[$id];
+        }, $matched);
     }
 
     /**

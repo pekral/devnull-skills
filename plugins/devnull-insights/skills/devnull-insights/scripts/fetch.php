@@ -7,7 +7,9 @@ declare(strict_types=1);
  *
  * Runs unchanged on Windows, macOS and Linux with PHP 8.3+ and ext-openssl (no ext-curl, no ext-mbstring, no shell tools).
  *
- * Usage: php fetch.php [--hours=24] [--topics=topics.json] [--keywords=a,b,c] [--max-pages=100] [--no-replies] [--trending=10] [--output=file.json]
+ * Usage: php fetch.php [--hours=24] [--topics=topics.json] [--keywords=a,b] [--weak-keywords=c,d] [--min-score=2] [--max-pages=100]
+ *                      [--no-replies] [--trending=10] [--output=file.json]
+ *        php fetch.php --profile=name[,name…]|all [--hours=N] …   (saved profiles, see profiles.php; one fetch for all)
  * Output: UTF-8 JSON to --output (or stdout), progress on stderr. Exit code 1 with an "error:" line on any failure.
  * Prefer --output: Windows PowerShell 5.1 re-encodes `>` redirects to UTF-16.
  *
@@ -16,8 +18,10 @@ declare(strict_types=1);
  */
 
 use DevnullInsights\DevnullClient;
+use DevnullInsights\DevnullException;
 use DevnullInsights\FetchCommand;
 use DevnullInsights\HttpClient;
+use DevnullInsights\ProfileStore;
 
 require __DIR__.'/src/autoload.php';
 
@@ -29,4 +33,10 @@ $client = new DevnullClient(
     (int) $env('DEVNULL_PAGE_DELAY_MS', '400'),
 );
 
-exit((new FetchCommand($client, __DIR__.'/../topics.json', STDOUT, STDERR))->run(getopt('', FetchCommand::Options)));
+try {
+    $profiles = ProfileStore::fromEnvironment(getenv());
+} catch (DevnullException) {
+    $profiles = null; // Only --profile needs it, and it reports the missing store itself.
+}
+
+exit((new FetchCommand($client, __DIR__.'/../topics.json', STDOUT, STDERR, $profiles))->run(getopt('', FetchCommand::Options)));

@@ -114,7 +114,7 @@ test('noise is filtered out and reported, signal posts stay', function (): void 
         ->and(array_column($json['matched'], 'author'))->toBe(['@pestcore', '@maintainer', '@reelbot'])
         ->and($json['matched'][2]['series_count'])->toBe(5)
         ->and($json['matched'][0]['score'])->toBeGreaterThanOrEqual(2)
-        ->and($json['filtered_out'])->toBe(['total' => 6, 'weak_only' => 2, 'below_min_score' => 0, 'series_merged' => 4])
+        ->and($json['filtered_out'])->toBe(['total' => 6, 'weak_only' => 2, 'below_min_score' => 0, 'excluded' => 0, 'series_merged' => 4])
         ->and($json['min_score'])->toBe(2);
 });
 
