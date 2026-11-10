@@ -56,6 +56,7 @@ Composer and Pest are development tools of this repository only; the plugins run
 - `tests/Feature` runs `fetch.php` as the skill does, against `tests/Fixtures/server.php` — a `php -S` stand-in for dev-null.sh with paging, the Inertia version handshake, 429/500 responses and a changed response shape. Every run disables the ext-curl and ext-mbstring functions, so a call to either fails the test.
 - `tests/Unit` covers topic matching, the manifests, and a token scan that keeps ext-curl, ext-mbstring and shell calls out of the plugin scripts.
 - **CI** (`.github/workflows/ci.yml`) runs the tests on Ubuntu, macOS and Windows with PHP 8.3, 8.4 and 8.5, and validates the marketplace and plugin manifests.
+- **Contract smoke test** (`.github/workflows/contract-smoke.yml`) reads the live dev-null.sh log once a day and opens an issue when the response no longer has the shape `fetch.php` relies on.
 
 ## Releasing
 

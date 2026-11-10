@@ -1,0 +1,57 @@
+name: dev-null.sh contract smoke test
+
+# The skill reads the JSON the dev-null.sh web app loads, not a documented API. This run checks once a day that the
+# live site still answers in the shape fetch.php relies on, and opens an issue when it does not.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Read the live log
+        run: |
+          php plugins/devnull-insights/skills/devnull-insights/scripts/fetch.php --hours=3 --max-pages=3 --output=smoke.json 2> smoke.log || { cat smoke.log; exit 1; }
+          cat smoke.log
+          php -r '
+            $d = json_decode(file_get_contents("smoke.json"), true, flags: JSON_THROW_ON_ERROR);
+            foreach (["scanned_posts", "complete_window", "matched", "trending_overall"] as $key) {
+                array_key_exists($key, $d) || throw new RuntimeException("missing key {$key}");
+            }
+            $d["scanned_posts"] > 0 || throw new RuntimeException("no posts in the last 3 hours");
+            echo "ok: {$d["scanned_posts"]} posts, {$d["matched_count"]} matched\n";
+          '
+
+      - name: Open an issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="dev-null.sh contract smoke test failed"
+          if [ -z "$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')" ]; then
+            {
+              echo "Denní kontrola rozhraní dev-null.sh selhala: $RUN_URL"
+              echo
+              echo '```'
+              tail -n 20 smoke.log 2>/dev/null || true
+              echo '```'
+              echo
+              echo 'Skript `fetch.php` pravděpodobně narazil na změnu struktury odpovědi. Ověř `props.commits`, hlavičku `x-inertia-version` a endpoint odpovědí.'
+            } > body.md
+            gh issue create --title "$title" --label bug --body-file body.md
+          fi
