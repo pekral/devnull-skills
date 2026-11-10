@@ -1,0 +1,5 @@
+# devnull-insights: daily report for all projects, weekdays at 07:07; weekly summary on Mondays at 07:37.
+# cron starts with a minimal PATH: put the directories of claude, php and gh into it.
+PATH=/usr/local/bin:/usr/bin:/bin:/home/YOU/.local/bin
+7 7 * * 1-5 claude -p "/devnull-insights všechny projekty unattended" --permission-mode dontAsk --allowedTools "Bash(php *)" "Bash(gh repo view *)" "Bash(gh api *)" "Read" "Write" >> "$HOME/.config/devnull-insights/cron.log" 2>&1
+37 7 * * 1 claude -p "/devnull-insights všechny projekty weekly unattended" --permission-mode dontAsk --allowedTools "Bash(php *)" "Bash(gh repo view *)" "Bash(gh api *)" "Read" "Write" >> "$HOME/.config/devnull-insights/cron.log" 2>&1

@@ -74,6 +74,14 @@ After a report, ask for issues by proposal ID — "založ issues pro P1 a P3". T
 4. creates the issues with `gh issue create --body-file` (optional label `from-devnull`),
 5. stores each issue link on its proposal, so the next report knows it is being worked on.
 
+## Scheduled runs
+
+`/devnull-insights všechny projekty unattended` runs without questions: saved profiles only, nothing published, the report archived under its date. Add `weekly` for a 7-day summary compared with the previous week, and `notify=<owner/repo>#<issue>` to get the TL;DR as a comment on an issue. [`docs/scheduling.md`](docs/scheduling.md) shows how to run it every morning with cron (Linux), launchd (macOS), Task Scheduler (Windows), or a Claude Code routine, with ready-made files in [`docs/examples`](docs/examples).
+
+```bash
+php plugins/devnull-insights/skills/devnull-insights/scripts/archive.php list
+```
+
 ## Install
 
 ### Claude Code
