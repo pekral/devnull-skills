@@ -57,20 +57,18 @@ Score each proposal by impact on adoption, evidence strength (number of independ
 - Take `url` verbatim from the `url` field of the fetched JSON (`https://dev-null.sh/@<handle>/commits/<id>`). Never build, shorten or guess a URL, and never link the author's profile or the `link` field (an external page the post shares) in its place — the external link may follow the post link as extra context.
 - A reply is cited through its parent post's URL, naming the reply's author: `[@brendt in a reply to @Seldaek](parent-url)`.
 - Facts from the repository analysis (missing topics, existing rules, file contents) may support an item but never stand alone: an item with no post behind it is dropped, not listed without a source.
-- Before answering, check every item in sections 2–5 of the output has a link; add the missing one or remove the item.
+- Before answering, check every theme, proposal, quick win and engagement row of the report has a link; add the missing one or remove the item.
 
 ## Output
-1. **Window summary** — time range, scanned posts, matched posts, whether the window is complete.
-2. **What people talk about** — 3–6 themes, each with 1–3 source links and one sentence on the need.
-3. **Proposals for `<repo>`** (ranked) — for each:
-   - what to change (concrete: file, section, feature, command)
-   - why — the signal with its source link(s)
-   - expected effect on discoverability / usage
-   - effort (S/M/L) and risk
-4. **Quick wins today** — max 3 changes doable in under an hour, each derived from a proposal above and repeating that proposal's source link(s).
-5. **Engagement opportunities** — posts where the user could personally share relevant experience or the project, each as a source link with one line on what to contribute (never post on their behalf).
+Render the answer with `templates/report.md` (in this skill's directory) — always, whatever the request. Read the template before writing, follow the comment at its top, and output the filled Markdown directly in the reply, with no preamble before the title.
+- **Mode** — `repository` when the user names a repository or project, `question` when they ask something specific ("what do people think about…", "co se řeší o…"), otherwise `digest`. The mode decides which sections appear; section order and numbering stay fixed so every report reads the same.
+- **Repository mode** — up to 6 themes, 3–7 ranked proposals, max 3 quick wins (each derived from a proposal, under an hour), engagement opportunities.
+- **Digest and question modes** — no proposals or quick wins; the themes, the answer and the engagement opportunities carry the value.
+- Translate the template's headings and labels into the user's language; keep emoji, order, IDs (`T1`, `P1`) and tables.
+- When the user asks to save the report, write the same Markdown to the path they name.
 
 ## Done when
 - The script ran for the requested window (or the incompleteness is stated).
+- The reply follows `templates/report.md` for the chosen mode, with no empty sections.
 - Every theme, proposal, quick win and engagement opportunity links at least one dev-null post in the `[@author](url)` format, and every proposal names a concrete change in the repository.
 - Nothing was posted to dev-null.sh and the repository was not modified.
