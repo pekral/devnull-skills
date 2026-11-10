@@ -121,8 +121,12 @@ final readonly class Archive
     private static function name(string $name): string
     {
         $name = trim($name);
-        if (preg_match('/^[a-z0-9][a-z0-9._-]*$/', $name) !== 1 || str_ends_with($name, '-weekly')) {
+        if (preg_match('/^[a-z0-9][a-z0-9._-]*$/', $name) !== 1) {
             throw new DevnullException("Invalid report name \"{$name}\": use lower-case letters, digits, '.', '_' and '-'");
+        }
+        // The archive appends "-weekly" and "-2", "-3" … to file names; a name ending like that would be read back wrong.
+        if (preg_match('/-(weekly|\d+)$/', $name) === 1) {
+            throw new DevnullException("Invalid report name \"{$name}\": it must not end with -weekly or -<number>");
         }
 
         return $name;
