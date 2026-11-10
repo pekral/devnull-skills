@@ -3,6 +3,21 @@
 declare(strict_types=1);
 
 const FETCH_SCRIPT = __DIR__.'/../plugins/devnull-insights/skills/devnull-insights/scripts/fetch.php';
+const PROFILES_SCRIPT = __DIR__.'/../plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php';
+
+/** A fresh, empty profile directory for one test. */
+function profileHome(): string
+{
+    $directory = sys_get_temp_dir().'/devnull-profiles-'.bin2hex(random_bytes(6));
+    register_shutdown_function(static function () use ($directory): void {
+        foreach (glob($directory.'/*') ?: [] as $file) {
+            unlink($file);
+        }
+        @rmdir($directory);
+    });
+
+    return $directory;
+}
 
 /**
  * Starts the dev-null.sh stand-in once per test process and returns its base URL.
@@ -60,19 +75,35 @@ function fixtureServer(): string
  * @param  list<string>  $arguments
  * @return array{exit: int, stdout: string, stderr: string, json: ?array<mixed>}
  */
-function runFetch(string $scenario, array $arguments = []): array
+function runFetch(string $scenario, array $arguments = [], array $env = []): array
+{
+    return runScript(FETCH_SCRIPT, $arguments, ['DEVNULL_BASE_URL' => fixtureServer()."/{$scenario}", ...$env]);
+}
+
+/** How many /log/latest requests a scenario received. */
+function logRequests(string $scenario): int
+{
+    return json_decode((string) file_get_contents(fixtureServer()."/__hits/{$scenario}"), true)['count'];
+}
+
+/**
+ * @param  list<string>  $arguments
+ * @param  array<string, string>  $env
+ * @return array{exit: int, stdout: string, stderr: string, json: ?array<mixed>}
+ */
+function runScript(string $script, array $arguments = [], array $env = []): array
 {
     $disabled = [];
     foreach (['curl', 'mbstring'] as $extension) {
         $disabled = [...$disabled, ...(extension_loaded($extension) ? get_extension_funcs($extension) ?: [] : [])];
     }
 
-    $command = [PHP_BINARY, '-d', 'disable_functions='.implode(',', $disabled), FETCH_SCRIPT, ...$arguments];
+    $command = [PHP_BINARY, '-d', 'disable_functions='.implode(',', $disabled), $script, ...$arguments];
     $env = [
         ...getenv(),
-        'DEVNULL_BASE_URL' => fixtureServer()."/{$scenario}",
         'DEVNULL_PAGE_DELAY_MS' => '0',
         'DEVNULL_RETRY_DELAY' => '0',
+        ...$env,
     ];
 
     $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env);
