@@ -14,7 +14,7 @@ use JsonException;
  */
 final readonly class FetchCommand
 {
-    public const array Options = ['hours::', 'topics::', 'keywords::', 'max-pages::', 'no-replies', 'trending::', 'output::'];
+    public const array Options = ['hours::', 'topics::', 'keywords::', 'weak-keywords::', 'min-score::', 'max-pages::', 'no-replies', 'trending::', 'output::'];
 
     /**
      * @param  resource  $stdout
@@ -44,6 +44,7 @@ final readonly class FetchCommand
         $hours = $this->number($options, 'hours', 24);
         $maxPages = (int) $this->number($options, 'max-pages', 100);
         $trending = (int) $this->number($options, 'trending', 10, allowZero: true);
+        $minScore = (int) $this->number($options, 'min-score', TopicMatcher::StrongWeight);
         $matcher = TopicMatcher::fromTopics($topics = $this->topics($options));
 
         $cutoff = (new DateTimeImmutable('@'.(time() - (int) round($hours * 3600))))->setTimezone(new DateTimeZone('UTC'));
@@ -55,19 +56,29 @@ final readonly class FetchCommand
             fwrite($this->stderr, "warning: stopped at --max-pages={$maxPages} before reaching the {$hours}h cutoff\n");
         }
 
-        $matched = [];
+        $candidates = [];
+        $filtered = ['weak_only' => 0, 'below_min_score' => 0];
         foreach ($window['posts'] as $commit) {
-            $hits = $matcher->match($commit);
-            if ($hits === []) {
+            $match = $matcher->match($commit);
+            if ($match['topics'] === []) {
+                continue;
+            }
+            if ($match['strong'] === 0) {
+                $filtered['weak_only']++;
+                continue;
+            }
+            if ($match['score'] < $minScore) {
+                $filtered['below_min_score']++;
                 continue;
             }
 
-            $entry = Posts::summarize($commit, $this->client->baseUrl());
-            $entry['topics'] = $hits;
-            if (! isset($options['no-replies']) && $entry['replies_count'] > 0) {
-                $entry = $this->withReplies($entry, (string) $commit['id']);
-            }
-            $matched[] = $entry;
+            $candidates[] = Posts::summarize($commit, $this->client->baseUrl()) + ['topics' => $match['topics'], 'score' => $match['score']];
+        }
+
+        $matched = Posts::byEngagement($candidates);
+
+        if (! isset($options['no-replies'])) {
+            $matched = array_map(fn (array $entry): array => $entry['replies_count'] > 0 ? $this->withReplies($entry, (string) $entry['id']) : $entry, $matched);
         }
 
         $all = array_map(fn (array $commit): array => Posts::summarize($commit, $this->client->baseUrl()), array_values($window['posts']));
@@ -78,8 +89,10 @@ final readonly class FetchCommand
             'scanned_posts' => count($window['posts']),
             'complete_window' => $window['complete'],
             'topics' => array_keys($topics),
+            'min_score' => $minScore,
             'matched_count' => count($matched),
-            'matched' => Posts::byEngagement($matched),
+            'filtered_out' => ['total' => array_sum($filtered)] + $filtered,
+            'matched' => $matched,
             'trending_overall' => array_slice(Posts::byEngagement($all), 0, $trending),
         ]);
     }
@@ -104,7 +117,7 @@ final readonly class FetchCommand
 
     /**
      * @param  array<string, string|false|list<string|false>>  $options
-     * @return array<string, list<string>>
+     * @return array<string, array{strong: list<string>, weak: list<string>}>
      */
     private function topics(array $options): array
     {
@@ -121,14 +134,13 @@ final readonly class FetchCommand
             throw new DevnullException("Cannot read topics from {$file}");
         }
 
-        $topics = array_map(fn (mixed $keywords): array => array_values(array_map('strval', (array) $keywords)), $topics);
-
-        $keywords = $this->string($options, 'keywords');
-        if ($keywords !== null) {
-            $topics['repository'] = array_values(array_filter(array_map('trim', explode(',', $keywords)), fn (string $keyword): bool => $keyword !== ''));
+        $strong = $this->string($options, 'keywords');
+        $weak = $this->string($options, 'weak-keywords');
+        if ($strong !== null || $weak !== null) {
+            $topics['repository'] = ['strong' => explode(',', (string) $strong), 'weak' => explode(',', (string) $weak)];
         }
 
-        return $topics;
+        return TopicMatcher::normalize($topics);
     }
 
     /**
