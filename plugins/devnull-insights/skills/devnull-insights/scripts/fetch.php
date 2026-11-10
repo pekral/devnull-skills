@@ -9,7 +9,8 @@ declare(strict_types=1);
  *
  * Usage: php fetch.php [--hours=24] [--topics=topics.json] [--keywords=a,b] [--weak-keywords=c,d] [--min-score=2] [--max-pages=100]
  *                      [--no-replies] [--trending=10] [--output=file.json]
- *        php fetch.php --profile=name[,name…]|all [--hours=N] …   (saved profiles, see profiles.php; one fetch for all)
+ *        php fetch.php --profile=name[,name…]|all [--hours=N] [--since-last-run] [--include-seen] …
+ *            (saved profiles, see profiles.php; one fetch for all; posts reported before are left out, see state.php)
  * Output: UTF-8 JSON to --output (or stdout), progress on stderr. Exit code 1 with an "error:" line on any failure.
  * Prefer --output: Windows PowerShell 5.1 re-encodes `>` redirects to UTF-16.
  *
@@ -22,6 +23,7 @@ use DevnullInsights\DevnullException;
 use DevnullInsights\FetchCommand;
 use DevnullInsights\HttpClient;
 use DevnullInsights\ProfileStore;
+use DevnullInsights\StateStore;
 
 require __DIR__.'/src/autoload.php';
 
@@ -39,4 +41,4 @@ try {
     $profiles = null; // Only --profile needs it, and it reports the missing store itself.
 }
 
-exit((new FetchCommand($client, __DIR__.'/../topics.json', STDOUT, STDERR, $profiles))->run(getopt('', FetchCommand::Options)));
+exit((new FetchCommand($client, __DIR__.'/../topics.json', STDOUT, STDERR, $profiles, $profiles === null ? null : StateStore::forProfiles($profiles)))->run(getopt('', FetchCommand::Options)));

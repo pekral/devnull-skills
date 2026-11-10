@@ -95,19 +95,27 @@ final readonly class ProfileStore
         $this->write($profiles);
     }
 
-    /**
-     * @param  array<string, mixed>  $profile
-     * @return Profile
-     */
-    public static function validate(array $profile): array
+    /** A profile name is also a file name, so it allows only characters that are safe on every OS. */
+    public static function validateName(string $name): string
     {
-        $name = trim((string) ($profile['name'] ?? ''));
+        $name = trim($name);
         if (preg_match('/^[a-z0-9][a-z0-9._-]*$/', $name) !== 1) {
             throw new DevnullException("Invalid profile name \"{$name}\": use lower-case letters, digits, '.', '_' and '-'");
         }
         if ($name === 'all') {
             throw new DevnullException('"all" is reserved: fetch.php --profile=all selects every profile');
         }
+
+        return $name;
+    }
+
+    /**
+     * @param  array<string, mixed>  $profile
+     * @return Profile
+     */
+    public static function validate(array $profile): array
+    {
+        $name = self::validateName((string) ($profile['name'] ?? ''));
 
         $repository = trim((string) ($profile['repository'] ?? ''));
         if ($repository === '') {

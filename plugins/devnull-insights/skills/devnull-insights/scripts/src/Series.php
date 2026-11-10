@@ -33,6 +33,7 @@ final class Series
             $first = $summaries[$indexes[0]];
             if (count($indexes) >= self::MinSize) {
                 $first['series_count'] = count($indexes);
+                $first['series_ids'] = array_values(array_filter(array_map(static fn (int $index): ?string => $summaries[$index]['id'] ?? null, $indexes)));
                 $merged += count($indexes) - 1;
                 $entries[] = $first;
                 continue;

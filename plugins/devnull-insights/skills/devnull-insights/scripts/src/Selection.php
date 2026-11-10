@@ -17,16 +17,18 @@ final readonly class Selection
         private int $minScore,
         private DateTimeImmutable $since,
         private ?TopicMatcher $exclude = null,
+        /** @var array<string, mixed> ids of posts already reported for this project */
+        private array $seen = [],
     ) {
     }
 
     /**
      * @param  array<string, array<string, mixed>>  $posts  the fetched window
-     * @return array{matched: list<array<string, mixed>>, filtered: array{total: int, weak_only: int, below_min_score: int, excluded: int, series_merged: int}}
+     * @return array{matched: list<array<string, mixed>>, filtered: array{total: int, already_seen: int, weak_only: int, below_min_score: int, excluded: int, series_merged: int}}
      */
     public function select(array $posts, string $baseUrl): array
     {
-        $filtered = ['weak_only' => 0, 'below_min_score' => 0, 'excluded' => 0, 'series_merged' => 0];
+        $filtered = ['already_seen' => 0, 'weak_only' => 0, 'below_min_score' => 0, 'excluded' => 0, 'series_merged' => 0];
         $candidates = [];
 
         foreach ($posts as $commit) {
@@ -40,6 +42,7 @@ final readonly class Selection
             }
 
             $reason = match (true) {
+                isset($this->seen[$commit['id']]) => 'already_seen',
                 $match['strong'] === 0 => 'weak_only',
                 $match['score'] < $this->minScore => 'below_min_score',
                 $this->isExcluded($commit) => 'excluded',

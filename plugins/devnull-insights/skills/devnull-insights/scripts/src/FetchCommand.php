@@ -16,7 +16,10 @@ use JsonException;
  */
 final readonly class FetchCommand
 {
-    public const array Options = ['hours::', 'topics::', 'keywords::', 'weak-keywords::', 'min-score::', 'profile::', 'max-pages::', 'no-replies', 'trending::', 'output::'];
+    /** --since-last-run never reaches further back than this, however old the last run is. */
+    public const float MaxSinceLastRunHours = 168.0;
+
+    public const array Options = ['hours::', 'topics::', 'keywords::', 'weak-keywords::', 'min-score::', 'profile::', 'since-last-run', 'include-seen', 'max-pages::', 'no-replies', 'trending::', 'output::'];
 
     /**
      * @param  resource  $stdout
@@ -28,6 +31,7 @@ final readonly class FetchCommand
         private mixed $stdout,
         private mixed $stderr,
         private ?ProfileStore $profiles = null,
+        private ?StateStore $states = null,
     ) {
     }
 
@@ -53,9 +57,11 @@ final readonly class FetchCommand
         $minScore = (int) $this->number($options, 'min-score', TopicMatcher::StrongWeight);
         $topics = $this->topics($options);
         $profiles = $this->selectedProfiles($options);
-
-        $hours = $this->number($options, 'hours', $profiles === [] ? ProfileStore::DefaultHours : max(array_column($profiles, 'hours')));
         $now = time();
+
+        // Each profile reads its own window and memory; the log is fetched once for the longest window.
+        $plans = array_map(fn (array $profile): array => $this->plan($options, $profile, $now), $profiles);
+        $hours = $this->number($options, 'hours', $plans === [] ? ProfileStore::DefaultHours : max(array_column($plans, 'hours')));
         $since = static fn (float $hours): DateTimeImmutable => (new DateTimeImmutable('@'.($now - (int) round($hours * 3600))))->setTimezone(new DateTimeZone('UTC'));
 
         $window = $this->client->window($since($hours), $maxPages, function (int $page, int $posts): void {
@@ -84,21 +90,23 @@ final readonly class FetchCommand
             ];
         } else {
             $report['projects'] = [];
-            foreach ($profiles as $profile) {
+            foreach ($plans as ['profile' => $profile, 'hours' => $projectHours, 'state' => $state]) {
                 $projectTopics = $this->projectTopics($topics, $profile);
-                $projectHours = $this->string($options, 'hours') !== null ? $hours : $profile['hours'];
                 $exclude = $profile['exclude_keywords'] === [] ? null : TopicMatcher::fromTopics(['exclude' => $profile['exclude_keywords']]);
-                $selected = (new Selection(TopicMatcher::fromTopics($projectTopics), $minScore, $since($projectHours), $exclude))->select($window['posts'], $this->client->baseUrl());
+                $seen = isset($options['include-seen']) ? [] : $state['seen'];
+                $selected = (new Selection(TopicMatcher::fromTopics($projectTopics), $minScore, $since($projectHours), $exclude, $seen))->select($window['posts'], $this->client->baseUrl());
 
                 $report['projects'][] = [
                     'name' => $profile['name'],
                     'repository' => $profile['repository'],
                     'hours' => $projectHours,
+                    'last_run_at' => $state['last_run_at'],
                     'topics' => array_keys($projectTopics),
                     'min_score' => $minScore,
                     'matched_count' => count($selected['matched']),
                     'filtered_out' => $selected['filtered'],
                     'matched' => $this->withAllReplies($options, $selected['matched'], $replies),
+                    'proposals' => $state['proposals'],
                 ];
             }
         }
@@ -110,6 +118,32 @@ final readonly class FetchCommand
     }
 
     /**
+     * The window and memory of one profile: --hours wins, then the time since its last run (with --since-last-run),
+     * then its own hours.
+     *
+     * @param  array<string, string|false|list<string|false>>  $options
+     * @param  array{name: string, hours: float}  $profile
+     * @return array{profile: array<string, mixed>, hours: float, state: array{last_run_at: ?string, seen: array<string, string>, proposals: list<array<string, mixed>>}}
+     */
+    private function plan(array $options, array $profile, int $now): array
+    {
+        $state = $this->states?->load($profile['name']) ?? ['last_run_at' => null, 'seen' => [], 'proposals' => []];
+        $hours = $profile['hours'];
+
+        if ($this->string($options, 'hours') !== null) {
+            $hours = $this->number($options, 'hours', $hours);
+        } elseif (isset($options['since-last-run']) && $state['last_run_at'] !== null) {
+            $sinceLastRun = ($now - (new DateTimeImmutable($state['last_run_at']))->getTimestamp()) / 3600;
+            $hours = max(1 / 60, min(self::MaxSinceLastRunHours, $sinceLastRun));
+            if ($sinceLastRun > self::MaxSinceLastRunHours) {
+                fwrite($this->stderr, "warning: the last run of {$profile['name']} was ".round($sinceLastRun)."h ago; reading the last ".self::MaxSinceLastRunHours."h only\n");
+            }
+        }
+
+        return ['profile' => $profile, 'hours' => round($hours, 4), 'state' => $state];
+    }
+
+    /**
      * @param  array<string, string|false|list<string|false>>  $options
      * @return list<array{name: string, repository: string, keywords: list<string>, weak_keywords: list<string>, exclude_keywords: list<string>, topics: list<string>, hours: float}>
      */
@@ -117,6 +151,10 @@ final readonly class FetchCommand
     {
         $names = $this->string($options, 'profile');
         if ($names === null) {
+            if (isset($options['since-last-run']) || isset($options['include-seen'])) {
+                throw new DevnullException('--since-last-run and --include-seen need --profile: only profiles have a memory');
+            }
+
             return [];
         }
 
