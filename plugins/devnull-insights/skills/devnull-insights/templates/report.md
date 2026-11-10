@@ -55,6 +55,12 @@ Report template for devnull-insights. Rules:
 
 **T1 — {theme name}.** {one or two sentences on the need, with the strongest reply if it adds something}
 
+**Week over week** (weekly runs only — from `topic_counts` of this run and of the previous weekly report)
+
+| Topic | This week | Last week | Change |
+|---|---|---|---|
+| {topic} | {n} | {n or —} | {+n / −n / new} |
+
 ## 3. 💡 Proposals for {repo}
 <!-- repository mode only; ranked, 3–7 items -->
 
