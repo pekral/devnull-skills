@@ -1,0 +1,20 @@
+{
+    "name": "devnull-skills",
+    "interface": {
+        "displayName": "dev-null skills"
+    },
+    "plugins": [
+        {
+            "name": "devnull-insights",
+            "source": {
+                "source": "local",
+                "path": "./plugins/devnull-insights"
+            },
+            "policy": {
+                "installation": "AVAILABLE",
+                "authentication": "ON_INSTALL"
+            },
+            "category": "Productivity"
+        }
+    ]
+}

@@ -1,0 +1,16 @@
+{
+    "name": "devnull-insights",
+    "version": "0.1.0",
+    "description": "Scan dev-null.sh posts from the last N hours by topic and propose evidence-backed improvements for a repository.",
+    "author": {
+        "name": "Petr Král",
+        "url": "https://pekral.cz"
+    },
+    "license": "MIT",
+    "keywords": ["dev-null", "php", "laravel", "research", "open-source"],
+    "skills": "./skills/",
+    "interface": {
+        "displayName": "dev-null insights",
+        "category": "Productivity"
+    }
+}

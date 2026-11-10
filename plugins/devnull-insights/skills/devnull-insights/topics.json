@@ -1,0 +1,6 @@
+{
+    "php": ["php", "composer", "packagist", "phpstan", "psalm", "rector", "pest", "phpunit", "pint", "php-cs-fixer", "symfony", "frankenphp", "swoole", "roadrunner"],
+    "laravel": ["laravel", "eloquent", "artisan", "livewire", "filament", "inertia", "octane", "horizon", "reverb", "pulse", "telescope", "forge", "vapor", "herd", "sail", "laracon", "laracasts", "nova", "boost"],
+    "ai-coding": ["claude code", "claude", "anthropic", "mcp", "agent", "agents", "agentic", "skill", "skills", "subagent", "llm", "prompt", "cursor", "copilot", "codex", "vibe coding", "ai review", "code review"],
+    "oss-growth": ["open source", "github stars", "readme", "release", "changelog", "awesome list", "contributors", "sponsor", "launch", "show dev"]
+}

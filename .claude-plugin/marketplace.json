@@ -1,0 +1,19 @@
+{
+    "name": "devnull-skills",
+    "owner": {
+        "name": "Petr Král",
+        "url": "https://pekral.cz"
+    },
+    "metadata": {
+        "description": "Skills that turn dev-null.sh discussions into improvements for PHP and Laravel projects."
+    },
+    "plugins": [
+        {
+            "name": "devnull-insights",
+            "source": "./plugins/devnull-insights",
+            "description": "Scan dev-null.sh posts from the last N hours by topic and propose evidence-backed improvements for a repository.",
+            "version": "0.1.0",
+            "category": "productivity"
+        }
+    ]
+}
