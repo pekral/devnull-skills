@@ -1,90 +1,19 @@
-# devnull-skills
+# Turn dev-null.sh discussions into improvements for your PHP and Laravel projects
 
-Agent skills for **Claude Code** and **OpenAI Codex** that turn discussions on [dev-null.sh](https://dev-null.sh) — the social network for developers — into concrete improvements for PHP and Laravel projects.
+[![MIT Licensed](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
+![CI](https://github.com/pekral/devnull-skills/workflows/CI/badge.svg)
 
-| Plugin | Skill | What it does |
-|---|---|---|
-| `devnull-insights` | `devnull-insights` | Scans dev-null.sh posts from the last N hours, filters them by topics (PHP, Laravel, AI coding, OSS growth) plus keywords derived from your repository, and proposes evidence-backed changes that make the repository more discoverable and used. |
+A plugin marketplace for **Claude Code** and **OpenAI Codex**. Its skill `devnull-insights` reads recent posts on [dev-null.sh](https://dev-null.sh), the social network for developers, and keeps those that match your topics and your repository's keywords. From them it proposes concrete changes to the repository, and every proposal links the posts it rests on.
 
-Example prompt:
-
-> For https://github.com/pekral/ai-olympus find improvements based on dev-null posts from the last 24h.
+dev-null.sh has no API keys. The skill reads the public `latest` log, the same JSON the web app loads. It never signs in, posts or stars anything.
 
 ## Requirements
 
-- PHP 8.3+ CLI with `ext-openssl` (already required by Composer) — no other extensions, no shell tools; works the same on Windows, macOS and Linux
-- `gh` CLI signed in, when analysing a GitHub repository
+- Claude Code or Codex
+- PHP 8.3+ CLI with `ext-openssl`, which Composer already requires. The scripts need no other extension and no Unix shell tools, so they run the same on Windows, macOS and Linux.
+- `gh` signed in, when the skill analyses a GitHub repository or creates issues
 
-dev-null.sh has no API keys: the skill reads the public `latest` log (the JSON the web app itself loads) and never signs in, posts or stars anything.
-
-## Topics
-
-`plugins/devnull-insights/skills/devnull-insights/topics.json` defines what the skill looks for:
-
-```json
-{
-    "laravel": {
-        "strong": ["laravel", "livewire", "filament"],
-        "weak": ["forge", "sail", "horizon"]
-    }
-}
-```
-
-- A **strong** keyword keeps a post on its own when the author wrote it.
-- A **weak** keyword is too common for that: it only adds to the score of a post a strong keyword keeps. A strong keyword found only in a link preview or a quoted post counts as weak.
-- A plain list (`"php": ["php", "composer"]`) means all keywords are strong.
-- Several near-identical posts of one author (same first three words) are merged into the most engaging one.
-
-## Project profiles
-
-A profile saves a repository with its keywords, so `/devnull-insights ai-olympus` or `/devnull-insights všechny projekty` runs without questions. The skill proposes a profile after the first report for a new repository and saves it when you confirm. You can also manage profiles yourself:
-
-```bash
-php plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php list
-php plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php save --name=ai-olympus \
-    --repository=https://github.com/pekral/ai-olympus --keywords="ai-olympus,claude code,subagents" \
-    --weak-keywords="skills,rules" --exclude-keywords="hiring" --topics=php,laravel,ai-coding --hours=24
-php plugins/devnull-insights/skills/devnull-insights/scripts/profiles.php remove --name=ai-olympus
-```
-
-Profiles live in `projects.json` outside the plugin, so updates never overwrite them: `$DEVNULL_INSIGHTS_HOME`, else `%APPDATA%\devnull-insights` on Windows, else `$XDG_CONFIG_HOME/devnull-insights`, else `~/.config/devnull-insights`. `fetch.php --profile=all` reads the dev-null.sh log once and selects the posts of every profile from it.
-
-## Memory between runs
-
-With a profile the skill remembers each project in `state/<profile>.json` next to `projects.json`:
-
-- **Reported posts** are left out of the next run (`filtered_out.already_seen`), and `--since-last-run` reads only the time since the last report. Posts are forgotten after 30 days.
-- **Proposals** keep a stable ID (`P1`, `P2`…) and a status: `new`, `accepted`, `done` or `rejected`. A new post that supports an earlier proposal reinforces it instead of creating a duplicate. A rejected proposal does not come back unless a clearly stronger signal appears.
-- Tell the skill your decision in plain words ("P2 zamítni", "P1 je hotové"), or use the script:
-
-```bash
-php plugins/devnull-insights/skills/devnull-insights/scripts/state.php show --profile=ai-olympus
-php plugins/devnull-insights/skills/devnull-insights/scripts/state.php proposal-set --profile=ai-olympus --id=P2 --status=rejected --note="Out of scope"
-```
-
-The state file is plain JSON and can be edited by hand.
-
-## From proposal to issue
-
-After a report, ask for issues by proposal ID — "založ issues pro P1 a P3". The skill:
-
-1. skips proposals that already have an issue and searches the repository for similar titles,
-2. drafts each issue from `templates/issue.md` with the dev-null source links,
-3. shows the preview and creates nothing until you confirm,
-4. creates the issues with `gh issue create --body-file` (optional label `from-devnull`),
-5. stores each issue link on its proposal, so the next report knows it is being worked on.
-
-## Scheduled runs
-
-`/devnull-insights všechny projekty unattended` runs without questions: saved profiles only, nothing published, the report archived under its date. Add `weekly` for a 7-day summary compared with the previous week, and `notify=<owner/repo>#<issue>` to get the TL;DR as a comment on an issue. [`docs/scheduling.md`](docs/scheduling.md) shows how to run it every morning with cron (Linux), launchd (macOS), Task Scheduler (Windows), or a Claude Code routine, with ready-made files in [`docs/examples`](docs/examples).
-
-```bash
-php plugins/devnull-insights/skills/devnull-insights/scripts/archive.php list
-```
-
-## Install
-
-While the repository is private, both tools clone it with your own Git credentials (`gh auth login`, or an SSH key on GitHub).
+## Installation
 
 ### Claude Code
 
@@ -93,57 +22,102 @@ While the repository is private, both tools clone it with your own Git credentia
 /plugin install devnull-insights@devnull-skills
 ```
 
-The same works from a terminal: `claude plugin marketplace add pekral/devnull-skills` and `claude plugin install devnull-insights@devnull-skills`. Update with `claude plugin marketplace update devnull-skills`.
+Update with `claude plugin marketplace update devnull-skills`.
 
 ### Codex
 
 ```bash
-codex plugin marketplace add git@github.com:pekral/devnull-skills.git
+codex plugin marketplace add pekral/devnull-skills
 codex plugin add devnull-insights@devnull-skills
 ```
 
-Codex reads `.agents/plugins/marketplace.json`. Update with `codex plugin marketplace upgrade devnull-skills`.
+Update with `codex plugin marketplace upgrade devnull-skills`.
 
-Both tools install a plugin into a cache keyed by its version (`…/devnull-insights/<version>/`), so users get a change only after the version goes up — see [Releasing](#releasing).
+Both tools cache a plugin by its version, so an update arrives only with a new version.
 
-## Local development
+## Configuration
 
-This repository is its own test bed:
+Nothing is required. Two things can be changed:
 
-- **Fastest loop** — `.claude/skills/devnull-insights` is a symlink to the plugin's skill, so Claude Code opened in this directory loads your working copy as a project skill. Edit, then start a new session (or `/reload-plugins`) and run `/devnull-insights`.
-- **Marketplace flow** — `/plugin marketplace add ./` then `/plugin install devnull-insights@devnull-skills` installs from the local checkout exactly as users will. Avoid having both active at once, or the skill appears twice.
-- **Codex** — `codex plugin marketplace add ./`.
-- **Script only** — `php plugins/devnull-insights/skills/devnull-insights/scripts/fetch.php --hours=6 --keywords="ai-olympus,skills" --output=devnull.json`.
-- **Validate** — `claude plugin validate .` and `claude plugin validate plugins/devnull-insights`.
+- **Topics** — `plugins/devnull-insights/skills/devnull-insights/topics.json` lists what the skill looks for. Each topic has `strong` keywords, which keep a post on their own, and `weak` keywords, which only add to the score of a post a strong keyword keeps:
 
-### Tests
+  ```json
+  {
+      "laravel": {
+          "strong": ["laravel", "livewire", "filament"],
+          "weak": ["forge", "sail", "horizon"]
+      }
+  }
+  ```
+
+- **Where profiles, memory and the report archive live** — `$DEVNULL_INSIGHTS_HOME`, else `%APPDATA%\devnull-insights` on Windows, else `$XDG_CONFIG_HOME/devnull-insights`, else `~/.config/devnull-insights`. Plugin updates never touch this directory.
+
+## Quick start
+
+Ask for a repository and a window:
+
+```text
+/devnull-insights for https://github.com/pekral/ai-olympus find improvements from the posts of the last 24h
+```
+
+The report covers the themes people discuss, ranked proposals for the repository, quick wins for today and posts worth replying to. Every item links its dev-null post. At the end, the skill offers to save a **profile** with the repository's keywords. After you confirm, later runs need only the name:
+
+```text
+/devnull-insights ai-olympus
+/devnull-insights all projects
+```
+
+With a profile, a run shows only posts it has not reported before. A proposal keeps its ID (`P1`, `P2` …) across runs. Answer in plain words, for example "P2 is not for us", "P1 is done", or "create issues for P1 and P3". The skill creates an issue only after you confirm its preview.
+
+## What it does
+
+- **Filters noise** — drops posts that hit only weak keywords, merges series of near-identical posts by one author, and reports what it filtered out.
+- **Remembers each project** — reported posts, the last run and every proposal with its status, in plain JSON you can edit.
+- **Turns proposals into issues** — after a duplicate search and your confirmation, with the source links in the issue body.
+- **Runs on a schedule** — `unattended` asks nothing and publishes nothing; `weekly` compares the topics with the previous week; reports are archived under their date. See [docs/scheduling.md](docs/scheduling.md) for cron, launchd, Task Scheduler and Claude Code routines.
+
+The skill calls four PHP scripts in `plugins/devnull-insights/skills/devnull-insights/scripts/`. Each one documents its options at the top of the file:
+
+| Script | Purpose |
+|---|---|
+| `fetch.php` | Reads the log for a window and selects the matching posts, for keywords or saved profiles |
+| `profiles.php` | Lists, shows, saves and removes project profiles |
+| `state.php` | Shows a project's memory, records a run, adds and decides proposals |
+| `archive.php` | Saves, lists and finds archived reports |
+
+## Documentation
+
+- [`SKILL.md`](plugins/devnull-insights/skills/devnull-insights/SKILL.md) — the procedure the agent follows
+- [`templates/report.md`](plugins/devnull-insights/skills/devnull-insights/templates/report.md) and [`templates/issue.md`](plugins/devnull-insights/skills/devnull-insights/templates/issue.md) — the report and issue layouts
+- [`docs/scheduling.md`](docs/scheduling.md) — scheduled runs
+
+## Testing
 
 ```bash
 composer install
 vendor/bin/pest
 ```
 
-Composer and Pest are development tools of this repository only; the plugins run on a plain PHP CLI.
+Composer and Pest are development tools of this repository only. The feature tests run the scripts against `tests/Fixtures/server.php`, a `php -S` stand-in for dev-null.sh, with the ext-curl and ext-mbstring functions disabled. CI runs the suite on Ubuntu, macOS and Windows with PHP 8.3, 8.4 and 8.5. A daily workflow checks that the live dev-null.sh log still has the shape the scripts expect.
 
-- `tests/Feature` runs `fetch.php` as the skill does, against `tests/Fixtures/server.php` — a `php -S` stand-in for dev-null.sh with paging, the Inertia version handshake, 429/500 responses and a changed response shape. Every run disables the ext-curl and ext-mbstring functions, so a call to either fails the test.
-- `tests/Unit` covers topic matching, the manifests, and a token scan that keeps ext-curl, ext-mbstring and shell calls out of the plugin scripts.
-- **CI** (`.github/workflows/ci.yml`) runs the tests on Ubuntu, macOS and Windows with PHP 8.3, 8.4 and 8.5, and validates the marketplace and plugin manifests.
-- **Contract smoke test** (`.github/workflows/contract-smoke.yml`) reads the live dev-null.sh log once a day and opens an issue when the response no longer has the shape `fetch.php` relies on.
+To work on the skill, open Claude Code in this repository. `.claude/skills/devnull-insights` links to the plugin's skill, so `/devnull-insights` runs your working copy.
 
 ## Releasing
 
-1. Set the new `version` in `.claude-plugin/marketplace.json`, `plugins/<name>/.claude-plugin/plugin.json` and `plugins/<name>/.codex-plugin/plugin.json`. `ManifestsTest` fails while they differ.
-2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [<version>] - <YYYY-MM-DD>` and open a new empty `## [Unreleased]` above it. `ManifestsTest` fails when the version has no section.
-3. Run `vendor/bin/pest`, then commit and merge to `main`.
-4. Tag the release and publish it with the changelog section as notes:
+1. Set the new `version` in `.claude-plugin/marketplace.json`, `plugins/<name>/.claude-plugin/plugin.json` and `plugins/<name>/.codex-plugin/plugin.json`.
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [<version>] - <YYYY-MM-DD>` and open a new empty `## [Unreleased]` above it.
+3. Run `vendor/bin/pest`, which fails when the versions differ or the changelog has no section for the version, then merge to `main`.
+4. Tag and publish:
 
 ```bash
 git tag v<version> && git push origin v<version>
 php bin/release-notes.php <version> | gh release create v<version> --title "v<version>" --notes-file -
 ```
 
-Before the repository goes public, work through [`docs/publishing-checklist.md`](docs/publishing-checklist.md).
+## Changelog
+
+See [CHANGELOG](CHANGELOG.md).
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
