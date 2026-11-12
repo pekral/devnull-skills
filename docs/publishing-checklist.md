@@ -25,5 +25,5 @@ Work through this list before the repository changes from private to public. Eve
 
 ## Release
 
-- [ ] A version is released as described in README *Releasing*: manifests at one version, a changelog section for it, tag `v<version>`, and a GitHub release with `bin/release-notes.php` as notes.
+- [ ] A version is released as described in [`releasing.md`](releasing.md): manifests at one version, a changelog section for it, tag `v<version>`, and a GitHub release with `bin/release-notes.php` as notes.
 - [ ] The repository description and topics on GitHub describe the plugin (for example `claude-code`, `codex`, `agent-skills`, `php`, `laravel`).
