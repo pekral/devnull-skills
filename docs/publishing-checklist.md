@@ -21,9 +21,9 @@ Work through this list before the repository changes from private to public. Eve
 
 - [ ] A clean Claude Code configuration installs the plugin from GitHub. Set `CLAUDE_CONFIG_DIR` to a new empty directory, then run `claude plugin marketplace add pekral/devnull-skills` and `claude plugin install devnull-insights@devnull-skills`.
 - [ ] A clean Codex configuration installs it. Set `CODEX_HOME` to a new empty directory, then run `codex plugin marketplace add pekral/devnull-skills` and `codex plugin add devnull-insights@devnull-skills`.
-- [ ] After the switch to public, both commands work without Git credentials.
+- [ ] After the switch to public, both commands work without Git credentials. Claude Code verified on 2026-11-12 with Git credentials disabled; Codex not yet verified.
 
 ## Release
 
-- [ ] A version is released as described in [`releasing.md`](releasing.md): manifests at one version, a changelog section for it, tag `v<version>`, and a GitHub release with `bin/release-notes.php` as notes.
+- [x] A version is released as described in [`releasing.md`](releasing.md): manifests at one version, a changelog section for it, tag `v<version>`, and a GitHub release with `bin/release-notes.php` as notes.
 - [ ] The repository description and topics on GitHub describe the plugin (for example `claude-code`, `codex`, `agent-skills`, `php`, `laravel`).
