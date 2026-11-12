@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-12
+
 ### Added
 - Install verification and release process (#7): installing the plugin was verified in a clean Claude Code configuration (local checkout and the private GitHub repository) and in a clean Codex 0.167 configuration (local checkout and the private repository over SSH, `codex plugin add`). The README lists the verified commands and how to update. `ManifestsTest` fails when the three manifests of a plugin disagree on the version or the changelog has no section for it; `bin/release-notes.php` prints a version's changelog section for `gh release create`. MIT `LICENSE` file and `docs/publishing-checklist.md`.
 - Scheduled runs and an archive (#4): `unattended` runs ask nothing, use saved profiles with `--since-last-run`, publish nothing except an optional `notify=<owner/repo>#<issue>` comment, and archive the report; `weekly` reads 7 days and compares topics with the previous weekly report. `scripts/archive.php` saves reports as `<YYYY-MM-DD>-<name>[-weekly].md` with their fetch data and never overwrites (`-2`, `-3` …); `fetch.php` adds `topic_counts`. `docs/scheduling.md` with ready-made cron, launchd and Task Scheduler files, and the limits of a cloud routine.
