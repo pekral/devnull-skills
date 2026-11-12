@@ -1,6 +1,6 @@
 {
     "name": "devnull-insights",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Scan dev-null.sh posts from the last N hours by topic and propose evidence-backed improvements for a repository.",
     "author": {
         "name": "Petr Král",

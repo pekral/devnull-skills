@@ -12,7 +12,7 @@
             "name": "devnull-insights",
             "source": "./plugins/devnull-insights",
             "description": "Scan dev-null.sh posts from the last N hours by topic and propose evidence-backed improvements for a repository.",
-            "version": "0.1.0",
+            "version": "0.1.1",
             "category": "productivity"
         }
     ]
