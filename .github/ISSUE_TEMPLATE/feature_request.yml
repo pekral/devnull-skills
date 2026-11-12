@@ -1,0 +1,50 @@
+name: Feature request
+description: Suggest an improvement to the devnull-insights skill, a topic, or a keyword
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. The skill is read-only towards dev-null.sh — it never posts,
+        replies, stars or signs in — and it creates issues in a repository only after you confirm a preview.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The situation or limitation that prompted this request.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Topics and keywords (topics.json)
+        - Report or issue template
+        - Profiles and memory
+        - Scheduled runs and the archive
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: posts
+    attributes:
+      label: Example posts
+      description: For a topic or keyword change, links to dev-null.sh posts it would keep or drop.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
